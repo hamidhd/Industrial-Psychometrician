@@ -1,0 +1,230 @@
+{
+  "entities": {
+    "Workspace": {
+      "title": "Workspace",
+      "description": "Shared organizational database workspace accessible from multiple authorized computers.",
+      "type": "object",
+      "properties": {
+        "org": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Organization or factory name"
+        },
+        "examiner": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Default examiner or HSE officer name"
+        },
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "UID of the workspace owner"
+        },
+        "ownerEmail": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Verified email of the workspace owner"
+        },
+        "allowedEmails": {
+          "type": "array",
+          "description": "Bounded list (max 20) of authorized verified emails for multi-computer access"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["org", "examiner", "ownerId", "ownerEmail", "allowedEmails", "createdAt", "updatedAt"]
+    },
+    "Person": {
+      "title": "Person",
+      "description": "Candidate or employee registered for psychometric screening.",
+      "type": "object",
+      "properties": {
+        "workspaceId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "allowedEmails": {
+          "type": "array",
+          "description": "Synced bounded list (max 20) of workspace member emails"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["candidate", "employee"]
+        },
+        "dept": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "job": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "age": {
+          "type": "string",
+          "maxLength": 10
+        },
+        "consent": {
+          "type": "boolean"
+        },
+        "created": {
+          "type": "number"
+        },
+        "createdByUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdByEmail": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "workspaceId",
+        "ownerId",
+        "allowedEmails",
+        "name",
+        "code",
+        "kind",
+        "dept",
+        "job",
+        "age",
+        "consent",
+        "created",
+        "createdByUid",
+        "createdByEmail",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "TestResult": {
+      "title": "TestResult",
+      "description": "Completed questionnaire or computerized cognitive task result.",
+      "type": "object",
+      "properties": {
+        "workspaceId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "personId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "allowedEmails": {
+          "type": "array",
+          "description": "Synced bounded list (max 20) of workspace member emails"
+        },
+        "testId": {
+          "type": "string",
+          "enum": ["ipip", "dass", "safety", "integrity", "burnout", "fatigue", "reaction", "stroop", "digits", "trail"]
+        },
+        "date": {
+          "type": "number"
+        },
+        "computerLabel": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "recordedByUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "recordedByEmail": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "examiner": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "answers": {
+          "type": "array",
+          "description": "Optional array of questionnaire responses (max 30 items)"
+        },
+        "taskMetrics": {
+          "type": "object",
+          "description": "Optional raw metrics object for computerized performance tasks"
+        },
+        "dims": {
+          "type": "array",
+          "description": "Scored dimension interpretations (max 10)"
+        },
+        "flags": {
+          "type": "array",
+          "description": "Warning or critical flags (max 10)"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "workspaceId",
+        "personId",
+        "ownerId",
+        "allowedEmails",
+        "testId",
+        "date",
+        "computerLabel",
+        "recordedByUid",
+        "recordedByEmail",
+        "examiner",
+        "dims",
+        "flags",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/workspaces/{workspaceId}": {
+      "schema": { "$ref": "#/entities/Workspace" },
+      "description": "Shared organizational workspace configuration and member access list."
+    },
+    "/workspaces/{workspaceId}/people/{personId}": {
+      "schema": { "$ref": "#/entities/Person" },
+      "description": "Personnel and job candidates belonging to the workspace."
+    },
+    "/workspaces/{workspaceId}/results/{resultId}": {
+      "schema": { "$ref": "#/entities/TestResult" },
+      "description": "Psychometric questionnaire and cognitive task results recorded from any authorized computer."
+    }
+  }
+}

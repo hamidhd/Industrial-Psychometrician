@@ -1,0 +1,67 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  html {
+    font-family: 'Vazirmatn', Tahoma, 'Segoe UI', system-ui, sans-serif;
+  }
+
+  body {
+    @apply bg-[#edf0f2] text-[#1b2733] antialiased dark:bg-[#12181e] dark:text-[#e6ecf0];
+    font-size: 15px;
+    line-height: 1.75;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.num-ltr {
+  font-variant-numeric: tabular-nums;
+  direction: ltr;
+  unicode-bidi: isolate;
+  display: inline-block;
+}
+
+@keyframes shake {
+  25% {
+    transform: translateX(5px);
+  }
+  75% {
+    transform: translateX(-5px);
+  }
+}
+
+.animate-shake {
+  animation: shake 0.25s ease-in-out;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    font-size: 12.5px !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only-sheet {
+    position: static !important;
+    display: block !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  .avoid-break {
+    break-inside: avoid;
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "روان‌سنج صنعتی",
+  "description": "سامانه چندرایانه‌ای آزمون‌های روان‌شناختی محیط کار با پایگاه داده مشترک",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

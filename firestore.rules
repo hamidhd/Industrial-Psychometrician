@@ -1,0 +1,225 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email is string
+        && request.auth.token.email.size() >= 3
+        && request.auth.token.email.size() <= 200;
+    }
+
+    function isEmailList(list) {
+      return list is list
+        && list.size() >= 1
+        && list.size() <= 20
+        && list[0] is string
+        && list[0].size() >= 3
+        && list[0].size() <= 200;
+    }
+
+    function isWorkspaceMemberData(data) {
+      return isVerified()
+        && (data.ownerId == request.auth.uid || request.auth.token.email in data.allowedEmails);
+    }
+
+    function wsExists(workspaceId) {
+      return exists(/databases/$(database)/documents/workspaces/$(workspaceId));
+    }
+
+    function wsDoc(workspaceId) {
+      return get(/databases/$(database)/documents/workspaces/$(workspaceId)).data;
+    }
+
+    function isWorkspaceMember(workspaceId) {
+      return wsExists(workspaceId) && isWorkspaceMemberData(wsDoc(workspaceId));
+    }
+
+    function isValidWorkspace(data) {
+      return data.keys().hasAll(['org', 'examiner', 'ownerId', 'ownerEmail', 'allowedEmails', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['org', 'examiner', 'ownerId', 'ownerEmail', 'allowedEmails', 'createdAt', 'updatedAt'])
+        && data.org is string && data.org.size() <= 120
+        && data.examiner is string && data.examiner.size() <= 120
+        && isValidId(data.ownerId)
+        && data.ownerEmail is string && data.ownerEmail.size() >= 3 && data.ownerEmail.size() <= 200
+        && isEmailList(data.allowedEmails)
+        && data.ownerEmail in data.allowedEmails
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPerson(data, workspaceId) {
+      return data.keys().hasAll([
+          'workspaceId', 'ownerId', 'allowedEmails', 'name', 'code', 'kind',
+          'dept', 'job', 'age', 'consent', 'created', 'createdByUid', 'createdByEmail',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'workspaceId', 'ownerId', 'allowedEmails', 'name', 'code', 'kind',
+          'dept', 'job', 'age', 'consent', 'created', 'createdByUid', 'createdByEmail',
+          'createdAt', 'updatedAt'
+        ])
+        && data.workspaceId == workspaceId
+        && isValidId(data.ownerId)
+        && isEmailList(data.allowedEmails)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
+        && data.code is string && data.code.size() <= 40
+        && data.kind in ['candidate', 'employee']
+        && data.dept is string && data.dept.size() <= 100
+        && data.job is string && data.job.size() <= 100
+        && data.age is string && data.age.size() <= 10
+        && data.consent is bool && data.consent == true
+        && data.created is number
+        && isValidId(data.createdByUid)
+        && data.createdByEmail is string && data.createdByEmail.size() >= 3 && data.createdByEmail.size() <= 200
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTestResult(data, workspaceId) {
+      return data.keys().hasAll([
+          'workspaceId', 'personId', 'ownerId', 'allowedEmails', 'testId', 'date',
+          'computerLabel', 'recordedByUid', 'recordedByEmail', 'examiner',
+          'dims', 'flags', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'workspaceId', 'personId', 'ownerId', 'allowedEmails', 'testId', 'date',
+          'computerLabel', 'recordedByUid', 'recordedByEmail', 'examiner',
+          'answers', 'taskMetrics', 'dims', 'flags', 'createdAt'
+        ])
+        && data.workspaceId == workspaceId
+        && isValidId(data.personId)
+        && isValidId(data.ownerId)
+        && isEmailList(data.allowedEmails)
+        && data.testId in ['ipip', 'dass', 'safety', 'integrity', 'burnout', 'fatigue', 'reaction', 'stroop', 'digits', 'trail']
+        && data.date is number
+        && data.computerLabel is string && data.computerLabel.size() <= 80
+        && isValidId(data.recordedByUid)
+        && data.recordedByEmail is string && data.recordedByEmail.size() >= 3 && data.recordedByEmail.size() <= 200
+        && data.examiner is string && data.examiner.size() <= 120
+        && (!('answers' in data) || (data.answers is list && data.answers.size() <= 30 && (data.answers.size() == 0 || data.answers[0] is number)))
+        && (!('taskMetrics' in data) || (data.taskMetrics is map && data.taskMetrics.size() <= 10))
+        && data.dims is list && data.dims.size() >= 1 && data.dims.size() <= 10 && data.dims[0] is map
+        && data.flags is list && data.flags.size() <= 10 && (data.flags.size() == 0 || data.flags[0] is map)
+        && data.createdAt is timestamp;
+    }
+
+    match /workspaces/{workspaceId} {
+      allow get: if isVerified() && isValidId(workspaceId) && isWorkspaceMemberData(existing());
+      allow list: if isVerified() && (existing().ownerId == request.auth.uid || request.auth.token.email in existing().allowedEmails);
+      allow create: if isVerified()
+        && isValidId(workspaceId)
+        && isValidWorkspace(incoming())
+        && incoming().ownerId == request.auth.uid
+        && incoming().ownerEmail == request.auth.token.email
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerified()
+        && isValidId(workspaceId)
+        && isValidWorkspace(incoming())
+        && incoming().ownerId == existing().ownerId
+        && incoming().ownerEmail == existing().ownerEmail
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (existing().ownerId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['org', 'examiner', 'allowedEmails', 'updatedAt']))
+          || (request.auth.token.email in existing().allowedEmails && incoming().diff(existing()).affectedKeys().hasOnly(['org', 'examiner', 'updatedAt']))
+        );
+      allow delete: if isVerified() && isValidId(workspaceId) && existing().ownerId == request.auth.uid;
+
+      match /people/{personId} {
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(personId) && isWorkspaceMember(workspaceId);
+        allow list: if isVerified() && (existing().ownerId == request.auth.uid || request.auth.token.email in existing().allowedEmails);
+        allow create: if isVerified()
+          && isValidId(workspaceId)
+          && isValidId(personId)
+          && isValidPerson(incoming(), workspaceId)
+          && incoming().createdByUid == request.auth.uid
+          && incoming().createdByEmail == request.auth.token.email
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && isWorkspaceMember(workspaceId)
+          && incoming().ownerId == wsDoc(workspaceId).ownerId
+          && incoming().allowedEmails == wsDoc(workspaceId).allowedEmails;
+        allow update: if isVerified()
+          && isValidId(workspaceId)
+          && isValidId(personId)
+          && isValidPerson(incoming(), workspaceId)
+          && incoming().workspaceId == existing().workspaceId
+          && incoming().ownerId == existing().ownerId
+          && incoming().created == existing().created
+          && incoming().createdByUid == existing().createdByUid
+          && incoming().createdByEmail == existing().createdByEmail
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && isWorkspaceMember(workspaceId)
+          && (
+            (wsDoc(workspaceId).ownerId == request.auth.uid
+              && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'code', 'kind', 'dept', 'job', 'age', 'allowedEmails', 'updatedAt'])
+              && incoming().allowedEmails == wsDoc(workspaceId).allowedEmails)
+            || (incoming().diff(existing()).affectedKeys().hasOnly(['name', 'code', 'kind', 'dept', 'job', 'age', 'updatedAt'])
+              && incoming().allowedEmails == existing().allowedEmails)
+          );
+        allow delete: if isVerified() && isValidId(workspaceId) && isValidId(personId) && isWorkspaceMember(workspaceId);
+      }
+
+      match /results/{resultId} {
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(resultId) && isWorkspaceMember(workspaceId);
+        allow list: if isVerified() && (existing().ownerId == request.auth.uid || request.auth.token.email in existing().allowedEmails);
+        allow create: if isVerified()
+          && isValidId(workspaceId)
+          && isValidId(resultId)
+          && isValidTestResult(incoming(), workspaceId)
+          && incoming().recordedByUid == request.auth.uid
+          && incoming().recordedByEmail == request.auth.token.email
+          && incoming().createdAt == request.time
+          && isWorkspaceMember(workspaceId)
+          && exists(/databases/$(database)/documents/workspaces/$(workspaceId)/people/$(incoming().personId))
+          && incoming().ownerId == wsDoc(workspaceId).ownerId
+          && incoming().allowedEmails == wsDoc(workspaceId).allowedEmails;
+        allow update: if isVerified()
+          && isValidId(workspaceId)
+          && isValidId(resultId)
+          && isValidTestResult(incoming(), workspaceId)
+          && isWorkspaceMember(workspaceId)
+          && wsDoc(workspaceId).ownerId == request.auth.uid
+          && incoming().workspaceId == existing().workspaceId
+          && incoming().personId == existing().personId
+          && incoming().ownerId == existing().ownerId
+          && incoming().testId == existing().testId
+          && incoming().date == existing().date
+          && incoming().computerLabel == existing().computerLabel
+          && incoming().recordedByUid == existing().recordedByUid
+          && incoming().recordedByEmail == existing().recordedByEmail
+          && incoming().examiner == existing().examiner
+          && incoming().dims == existing().dims
+          && incoming().flags == existing().flags
+          && incoming().createdAt == existing().createdAt
+          && incoming().diff(existing()).affectedKeys().hasOnly(['allowedEmails'])
+          && incoming().allowedEmails == wsDoc(workspaceId).allowedEmails;
+        allow delete: if isVerified() && isValidId(workspaceId) && isValidId(resultId) && isWorkspaceMember(workspaceId);
+      }
+    }
+  }
+}

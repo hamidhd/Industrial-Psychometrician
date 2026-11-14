@@ -1,0 +1,132 @@
+name: Build Tauri Desktop Installers
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tauri-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: Auto-Determine Version
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && github.actor != 'github-actions[bot]'"
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      tag: ${{ steps.bump.outputs.tag }}
+      bump: ${{ steps.bump.outputs.bump }}
+      reason: ${{ steps.bump.outputs.reason }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Calculate & apply automatic semantic version
+        id: bump
+        run: node scripts/auto-version.mjs
+
+      - name: Commit bumped version & push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(release): ${{ steps.bump.outputs.tag }} [skip ci]"
+          fi
+          git tag -a "${{ steps.bump.outputs.tag }}" -m "Release ${{ steps.bump.outputs.tag }} — ${{ steps.bump.outputs.reason }}"
+          git push origin "HEAD:${{ github.ref_name }}" --tags
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.bump.outputs.tag }}" \
+            --title "روان‌سنج صنعتی ${{ steps.bump.outputs.tag }}" \
+            --notes "نسخه‌ی دسکتاپ (${{ steps.bump.outputs.tag }})
+          - نوع ارتقای خودکار نسخه: \`${{ steps.bump.outputs.bump }}\`
+          - علت: ${{ steps.bump.outputs.reason }}"
+
+  build-tauri:
+    name: Build Installer (${{ matrix.platform }})
+    needs: version
+    if: needs.version.outputs.tag != ''
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            label: windows
+          - platform: ubuntu-22.04
+            label: linux
+          - platform: macos-latest
+            label: macos
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout tagged release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Linux Tauri dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Setup Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Build Tauri v2 desktop installer & publish to GitHub Release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ needs.version.outputs.tag }}
+          releaseName: 'روان‌سنج صنعتی ${{ needs.version.outputs.tag }}'
+          releaseBody: |
+            نسخه‌ی دسکتاپ **روان‌سنج صنعتی** (${{ needs.version.outputs.tag }})
+            - **نوع ارتقای خودکار نسخه:** `${{ needs.version.outputs.bump }}`
+            - **علت انتخاب نسخه:** ${{ needs.version.outputs.reason }}
+
+            فایل‌های نصاب ویندوز (`.exe` / `.msi`)، لینوکس (`.deb` / `.AppImage`) و مک (`.dmg`) در بخش Assets زیر قابل دریافت هستند.
+          releaseDraft: false
+          prerelease: false
+
+      - name: Upload installer artifacts to workflow run
+        uses: actions/upload-artifact@v4
+        with:
+          name: ravansanj-sanati-${{ matrix.label }}-${{ needs.version.outputs.tag }}
+          path: |
+            src-tauri/target/release/bundle/**/*.exe
+            src-tauri/target/release/bundle/**/*.msi
+            src-tauri/target/release/bundle/**/*.deb
+            src-tauri/target/release/bundle/**/*.AppImage
+            src-tauri/target/release/bundle/**/*.dmg
+          if-no-files-found: warn

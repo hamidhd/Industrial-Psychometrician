@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>روان‌سنج صنعتی</title>
+<style>
+/* Layout: top bar + tab navigation + single content column; cards on a pale steel ground */
+:root{
+  --bg:#edf0f2; --surface:#ffffff; --surface2:#f4f6f7; --ink:#1b2733; --muted:#5a6a78; --line:#d5dce1;
+  --accent:#0e6a88; --accent-ink:#ffffff; --accent-soft:#dcedf3;
+  --good:#23804f; --good-soft:#dff3e8; --mid:#8a6a00; --mid-soft:#fbf0cc;
+  --warn:#b4560f; --warn-soft:#fde6d2; --bad:#b83232; --bad-soft:#fbdcdc;
+  --font:'Vazirmatn','Tahoma','Segoe UI',system-ui,sans-serif;
+  --radius:10px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12181e; --surface:#1b242c; --surface2:#222d36; --ink:#e6ecf0; --muted:#9aabb8; --line:#33414d;
+  --accent:#4fb4d4; --accent-ink:#06222c; --accent-soft:#17323d;
+  --good:#5cc78d; --good-soft:#173826; --mid:#e3c24d; --mid-soft:#3b3213;
+  --warn:#f0954f; --warn-soft:#41290f; --bad:#f07a7a; --bad-soft:#431c1c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12181e; --surface:#1b242c; --surface2:#222d36; --ink:#e6ecf0; --muted:#9aabb8; --line:#33414d;
+  --accent:#4fb4d4; --accent-ink:#06222c; --accent-soft:#17323d;
+  --good:#5cc78d; --good-soft:#173826; --mid:#e3c24d; --mid-soft:#3b3213;
+  --warn:#f0954f; --warn-soft:#41290f; --bad:#f07a7a; --bad-soft:#431c1c; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.8;
+  padding-block:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1080px;margin:0 auto}
+header.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 0 10px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;letter-spacing:-.2px}
+.logo i{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font-style:normal;font-size:18px;font-weight:800}
+.logo small{display:block;font-weight:400;font-size:12px;color:var(--muted);line-height:1.2}
+.spacer{flex:1}
+nav.tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:2px solid var(--line);margin-bottom:20px}
+nav.tabs button{background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-2px;padding:9px 14px;font:inherit;font-weight:500;color:var(--muted);cursor:pointer}
+nav.tabs button:hover{color:var(--ink)}
+nav.tabs button[aria-current="page"]{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+h1{font-size:24px;margin:0 0 4px;font-weight:800}
+h2{font-size:18px;margin:0 0 10px;font-weight:700}
+h3{font-size:15.5px;margin:0 0 6px;font-weight:700}
+p{margin:0 0 10px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px;min-width:0}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{font:inherit;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 16px;border-radius:8px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.sm{padding:4px 11px;font-size:13px;font-weight:500}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+label{display:block;font-weight:500;font-size:13.5px;margin-bottom:3px}
+input,select,textarea{font:inherit;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.form{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.badge{display:inline-block;padding:1px 10px;border-radius:99px;font-size:12.5px;font-weight:700;background:var(--surface2);border:1px solid var(--line)}
+.b-good{background:var(--good-soft);color:var(--good);border-color:transparent}
+.b-mid{background:var(--mid-soft);color:var(--mid);border-color:transparent}
+.b-warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.b-bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.b-info{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.tblwrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:520px}
+th,td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:13px;color:var(--muted);font-weight:500;background:var(--surface2)}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat b{font-size:28px;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums}
+.notice{border-radius:var(--radius);padding:12px 14px;margin-bottom:14px;border:1px solid transparent}
+.notice.info{background:var(--accent-soft);color:var(--ink);border-color:var(--accent)}
+.notice.warn{background:var(--warn-soft);border-color:var(--warn)}
+.notice.bad{background:var(--bad-soft);border-color:var(--bad)}
+.notice b{display:block;margin-bottom:2px}
+/* score meter */
+.meter{position:relative;height:12px;border-radius:6px;background:var(--surface2);border:1px solid var(--line);overflow:hidden;margin:6px 0}
+.meter>span{position:absolute;inset-block:0;right:0;border-radius:0 0 0 0;background:var(--accent)}
+.meter.t-good>span{background:var(--good)}.meter.t-mid>span{background:var(--mid)}
+.meter.t-warn>span{background:var(--warn)}.meter.t-bad>span{background:var(--bad)}
+.dim{padding:12px 0;border-bottom:1px dashed var(--line)}
+.dim:last-child{border-bottom:0}
+.dim .head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.dim .head strong{flex:1;min-width:120px}
+.num{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate;display:inline-block}
+/* questionnaire runner */
+.qprog{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-bottom:14px}
+.qprog>span{display:block;height:100%;background:var(--accent);transition:width .2s}
+.qitem{font-size:19px;font-weight:500;margin:6px 0 16px;min-height:3.6em;text-wrap:balance}
+.opts{display:grid;gap:8px}
+.opt{display:flex;gap:10px;align-items:center;text-align:right;width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer}
+.opt:hover{border-color:var(--accent);background:var(--accent-soft)}
+.opt kbd{display:inline-grid;place-items:center;min-width:24px;height:24px;border-radius:6px;background:var(--surface2);border:1px solid var(--line);font:inherit;font-size:12px}
+.opt.on{border-color:var(--accent);background:var(--accent-soft);font-weight:700}
+/* task stage */
+.stage{background:var(--surface2);border:1px solid var(--line);border-radius:var(--radius);min-height:300px;display:grid;place-items:center;text-align:center;padding:20px;user-select:none;touch-action:manipulation}
+.stage.go{background:#1f9d57;color:#fff}.stage.wait{background:#b83232;color:#fff}
+.stage .big{font-size:clamp(40px,10vw,84px);font-weight:800;line-height:1.2}
+.colorbtns{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.cbtn{height:54px;border-radius:9px;border:3px solid var(--line);cursor:pointer;font:inherit;font-weight:700;color:#fff;text-shadow:0 1px 2px #0008}
+.trail{position:relative;width:100%;height:420px;background:var(--surface2);border:1px solid var(--line);border-radius:var(--radius);touch-action:manipulation}
+.node{position:absolute;width:46px;height:46px;margin:-23px -23px 0 0;border-radius:50%;border:2px solid var(--ink);background:var(--surface);color:var(--ink);font:inherit;font-weight:800;font-size:16px;cursor:pointer;display:grid;place-items:center;padding:0}
+.node.done{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.node.err{animation:shake .25s}
+@keyframes shake{25%{transform:translateX(5px)}75%{transform:translateX(-5px)}}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:280px;margin:12px auto 0}
+.keypad button{height:52px;font:inherit;font-size:20px;font-weight:700;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.digits-in{direction:ltr;text-align:center;font-size:28px;letter-spacing:8px;min-height:44px;font-weight:800}
+/* overlay */
+.overlay{position:fixed;inset:0;background:#000a;display:none;z-index:50;padding:16px;overflow:auto}
+.overlay.open{display:block}
+.sheet{background:var(--surface);color:var(--ink);max-width:860px;margin:20px auto;border-radius:var(--radius);padding:22px;border:1px solid var(--line)}
+.toast{position:fixed;bottom:calc(18px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 18px;border-radius:99px;font-weight:700;display:none;z-index:99}
+details{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);margin-bottom:10px}
+summary{cursor:pointer;padding:12px 16px;font-weight:700;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"◂";display:inline-block;margin-left:8px;color:var(--accent);transition:transform .15s}
+details[open]>summary::before{transform:rotate(-90deg)}
+details>.body{padding:0 16px 14px}
+.body ul{margin:4px 0 10px;padding-right:20px}
+.body li{margin-bottom:3px}
+.kv{display:grid;grid-template-columns:140px 1fr;gap:4px 12px;margin:6px 0 10px}
+.kv dt{color:var(--muted);font-weight:500}.kv dd{margin:0}
+@media (max-width:560px){.kv{grid-template-columns:1fr}.node{width:42px;height:42px;margin:-21px -21px 0 0}}
+.only-print{display:none}
+@media print{
+  body{background:#fff;color:#000;padding:0;font-size:12.5px}
+  header.top,nav.tabs,.no-print,.toast{display:none!important}
+  .overlay{position:static;display:block!important;background:none;padding:0}
+  .sheet{border:0;margin:0;max-width:none;padding:0;background:#fff;color:#000}
+  .card,.dim{break-inside:avoid}
+  body.printing>.wrap{display:none}
+  .only-print{display:block}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo"><i>ر</i><div>روان‌سنج صنعتی<small>آزمون‌های روان‌شناختی محیط کار</small></div></div>
+    <div class="spacer"></div>
+    <button class="btn sm" id="themeBtn" title="تغییر پوسته">☾ / ☀</button>
+  </header>
+  <nav class="tabs" id="tabs">
+    <button data-v="home">داشبورد</button>
+    <button data-v="people">پرسنل و داوطلبان</button>
+    <button data-v="run">اجرای آزمون</button>
+    <button data-v="results">نتایج و گزارش</button>
+    <button data-v="help">راهنما و تفسیر</button>
+    <button data-v="settings">تنظیمات و پشتیبان</button>
+  </nav>
+  <main id="view"></main>
+</div>
+<div class="overlay" id="ov"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+/* ====== تعریف پرسشنامه‌ها ====== */
+const AGREE5=['کاملاً مخالفم','مخالفم','نظری ندارم','موافقم','کاملاً موافقم'];
+const B=(upTo,label,tone,text)=>({upTo,label,tone,text});
+const FINAL=999;
+
+const QUESTIONNAIRES=[
+{
+ id:'ipip', title:'شخصیت پنج‌عاملی (فرم کوتاه ۲۰ گویه‌ای)', short:'شخصیت', minutes:5, scale:{min:1,max:5,labels:AGREE5},
+ intro:'هر جمله را بخوانید و بر اساس اینکه «معمولاً» چقدر درباره‌ی شما صدق می‌کند پاسخ دهید. پاسخ درست یا غلط وجود ندارد؛ اولین حسِ خود را انتخاب کنید.',
+ items:[
+  ['در جمع‌ها شاد و پرانرژی‌ام و جمع را گرم می‌کنم.','E'],['با احساسات دیگران همدردی می‌کنم.','A'],
+  ['کارهای روزمره را همان موقع انجام می‌دهم و عقب نمی‌اندازم.','C'],['حالات روحی‌ام زود‌به‌زود تغییر می‌کند.','N'],
+  ['تخیل قوی و پرجزئیاتی دارم.','O'],['زیاد حرف نمی‌زنم.','E',1],['به مشکلات دیگران علاقه‌ای ندارم.','A',1],
+  ['اغلب فراموش می‌کنم وسایل را سر جای خودشان بگذارم.','C',1],['بیشتر وقت‌ها آرام و آسوده‌ام.','N',1],
+  ['درک مفاهیم انتزاعی برایم سخت است.','O',1],['در جمع‌ها با افراد زیادی صحبت می‌کنم.','E'],
+  ['احساسات دیگران را حس می‌کنم.','A'],['نظم و ترتیب را دوست دارم.','C'],['زود ناراحت یا آشفته می‌شوم.','N'],
+  ['به بحث‌های انتزاعی علاقه‌ای ندارم.','O',1],['ترجیح می‌دهم در پس‌زمینه بمانم و دیده نشوم.','E',1],
+  ['واقعاً به دیگران علاقه‌ای ندارم.','A',1],['کارها را به هم می‌ریزم و شلوغ می‌کنم.','C',1],
+  ['به‌ندرت احساس غمگینی می‌کنم.','N',1],['تخیل خوبی ندارم.','O',1]
+ ],
+ dims:{
+  E:{name:'برون‌گرایی',bands:[
+   B(9,'پایین','mid','کم‌حرف و مستقل؛ کار آرام و دقیق را ترجیح می‌دهد. در نقش‌های ارتباطی، آموزشی یا سرپرستی ممکن است به حمایت نیاز داشته باشد.'),
+   B(14,'متوسط','good','تعادل میان کار گروهی و کار فردی.'),
+   B(FINAL,'بالا','good','اجتماعی و پرانرژی؛ مناسب سرپرستی، آموزش و ارتباط با پیمانکاران. در کارهای یکنواخت و انفرادی طولانی ممکن است زود خسته شود.')]},
+  A:{name:'توافق‌پذیری',bands:[
+   B(9,'پایین','warn','صریح و رقابتی؛ در کار تیمی ممکن است تعارض ایجاد شود. در مصاحبه درباره‌ی همکاری و پذیرش تذکر بپرسید.'),
+   B(14,'متوسط','good','همکار و در عین حال مستقل در تصمیم‌گیری.'),
+   B(FINAL,'بالا','good','همدل و تیمی. ممکن است در تذکر دادن به همکار (مثلاً تذکر ایمنی) یا «نه» گفتن مشکل داشته باشد.')]},
+  C:{name:'وظیفه‌شناسی',bands:[
+   B(9,'پایین','bad','احتمال بی‌نظمی و بی‌دقتی. در مشاغل پرخطر (برق، مواد شیمیایی، کار در ارتفاع، ماشین‌آلات) بررسی تکمیلی لازم است.'),
+   B(14,'متوسط','mid','نظم قابل قبول؛ با نظارت و آموزش مناسب عملکرد خوبی دارد.'),
+   B(FINAL,'بالا','good','منظم، دقیق و پایبند به دستورالعمل. در مطالعات، قوی‌ترین پیش‌بین عملکرد شغلی و رفتار ایمن است. در حد افراطی ممکن است انعطاف کمی داشته باشد.')]},
+  N:{name:'ناپایداری هیجانی (نوروتیسم)',bands:[
+   B(9,'پایین','good','آرام و باثبات در فشار کاری.'),
+   B(14,'متوسط','mid','واکنش هیجانی معمول.'),
+   B(FINAL,'بالا','warn','واکنش‌پذیری هیجانی بالا. در شرایط پرفشار، اضطراری یا شیفت شب احتمال خطا بیشتر است. نتیجه را با پرسشنامه‌ی DASS و مصاحبه تکمیل کنید.')]},
+  O:{name:'گشودگی به تجربه',bands:[
+   B(9,'پایین','mid','عمل‌گرا و رویه‌محور؛ برای کارهای دستورالعملی مناسب است و تغییر را کندتر می‌پذیرد.'),
+   B(14,'متوسط','good','تعادل میان رویه و نوآوری.'),
+   B(FINAL,'بالا','good','خلاق و پذیرای تغییر؛ مناسب بهبود فرایند و ارائه‌ی پیشنهاد. ممکن است از کارهای کاملاً تکراری زود خسته شود.')]}
+ },
+ guide:{
+  measures:'پنج بُعد پایدار شخصیت: برون‌گرایی، توافق‌پذیری، وظیفه‌شناسی، ناپایداری هیجانی و گشودگی. هر بُعد با ۴ گویه سنجیده می‌شود (نمره‌ی ۴ تا ۲۰). ساختار برگرفته از فرم کوتاه Mini-IPIP (حوزه‌ی عمومی)؛ متن فارسی ترجمه‌ی آزاد است.',
+  admin:['محیط ساکت و بدون مزاحمت و بدون حضور همکاران یا سرپرست مستقیم.','بگویید پاسخ درست یا غلط وجود ندارد و صادق‌ترین پاسخ مفیدترین است.','گویه‌های معکوس به‌طور خودکار نمره‌گذاری می‌شوند؛ نیازی به محاسبه‌ی دستی نیست.'],
+  use:['استخدام: به‌عنوان بخشی از مجموعه‌ی ارزیابی، نه تصمیم‌گیر نهایی.','پرسنل فعلی: ارتقا، تغییر نقش، تشکیل تیم و تعیین نیازهای آموزشی.'],
+  limits:['خودگزارشی است و در استخدام ممکن است پاسخ‌ها مطلوب‌نما باشند؛ در کنار پرسشنامه‌ی درست‌کاری (دارای مقیاس روایی) استفاده شود.','نمرات ابعاد «تشخیص» نیستند و جایگاه بالا یا پایین به‌خودی‌خود خوب یا بد نیست؛ تناسب با نقش مهم است.']
+ }
+},
+{
+ id:'dass', title:'افسردگی، اضطراب و استرس (DASS-21)', short:'سلامت روان', minutes:5, mult:2,
+ scale:{min:0,max:3,labels:['اصلاً در مورد من صدق نکرد','تا حدی یا گاهی صدق کرد','تا حد زیادی یا اغلب صدق کرد','کاملاً یا بیشتر وقت‌ها صدق کرد']},
+ intro:'هر عبارت را بخوانید و مشخص کنید در طول «هفته‌ی گذشته» چقدر درباره‌ی شما صدق کرده است.',
+ items:[
+  ['به‌سختی می‌توانستم آرام شوم و تنش را کنار بگذارم.','S'],['دهانم خشک می‌شد.','A'],['به‌نظر نمی‌رسید اصلاً بتوانم احساس مثبتی داشته باشم.','D'],
+  ['تنگی نفس داشتم (مثلاً نفس‌نفس زدن شدید بدون فعالیت بدنی).','A'],['شروع کردن به انجام کارها برایم دشوار بود.','D'],
+  ['تمایل داشتم نسبت به اتفاقات واکنش بیش‌ازحد نشان دهم.','S'],['لرزش داشتم (مثلاً در دست‌ها).','A'],
+  ['احساس می‌کردم انرژی عصبی زیادی مصرف می‌کنم.','S'],['نگران موقعیت‌هایی بودم که ممکن است دچار وحشت شوم و خودم را بی‌آبرو کنم.','A'],
+  ['احساس می‌کردم هیچ چیزی برای انتظار کشیدن ندارم.','D'],['خودم را مضطرب و بی‌قرار می‌یافتم.','S'],['آرام شدن برایم سخت بود.','S'],
+  ['احساس غمگینی و دلمردگی می‌کردم.','D'],['نسبت به هر چیزی که مانع کارم می‌شد تحمل نداشتم.','S'],['احساس می‌کردم نزدیک به وحشت‌زدگی هستم.','A'],
+  ['نمی‌توانستم برای هیچ چیز مشتاق شوم.','D'],['احساس می‌کردم به‌عنوان یک انسان ارزش چندانی ندارم.','D'],['تا حدی زودرنج و حساس بودم.','S'],
+  ['بدون فعالیت بدنی، ضربان قلبم را حس می‌کردم (مثلاً تپش یا بی‌نظمی قلب).','A'],['بدون دلیل موجه احساس ترس می‌کردم.','A'],['احساس می‌کردم زندگی بی‌معنی است.','D']
+ ],
+ dims:{
+  D:{name:'افسردگی',bands:[B(9,'طبیعی','good','در محدوده‌ی طبیعی.'),B(13,'خفیف','mid','علائم خفیف؛ پیگیری و گفت‌وگو کافی است.'),B(20,'متوسط','warn','علائم متوسط؛ مصاحبه‌ی بالینی و بررسی عوامل شغلی و فردی توصیه می‌شود.'),B(27,'شدید','bad','علائم شدید؛ ارجاع به روان‌شناس یا روان‌پزشک.'),B(FINAL,'بسیار شدید','bad','علائم بسیار شدید؛ ارجاع فوری و حمایت از فرد.')]},
+  A:{name:'اضطراب',bands:[B(7,'طبیعی','good','در محدوده‌ی طبیعی.'),B(9,'خفیف','mid','علائم خفیف.'),B(14,'متوسط','warn','علائم متوسط؛ بررسی تکمیلی توصیه می‌شود.'),B(19,'شدید','bad','علائم شدید؛ ارجاع به متخصص.'),B(FINAL,'بسیار شدید','bad','علائم بسیار شدید؛ ارجاع فوری.')]},
+  S:{name:'استرس',bands:[B(14,'طبیعی','good','در محدوده‌ی طبیعی.'),B(18,'خفیف','mid','استرس خفیف.'),B(25,'متوسط','warn','استرس متوسط؛ بازبینی بار کاری، شیفت و منابع استرس.'),B(33,'شدید','bad','استرس شدید؛ مداخله و ارجاع.'),B(FINAL,'بسیار شدید','bad','استرس بسیار شدید؛ ارجاع و کاهش مواجهه با عوامل استرس‌زا.')]}
+ },
+ flags:(ans)=>{const f=[];if(ans[20]>=2)f.push({tone:'bad',text:'پاسخ به گویه‌ی ۲۱ («زندگی بی‌معنی است») بالاست. گفت‌وگوی محرمانه و غیرتنبیهی با فرد، و ارجاع فوری به روان‌شناس یا پزشک طب کار توصیه می‌شود؛ این نتیجه نباید برای تصمیم‌های تنبیهی استفاده شود.'});return f;},
+ guide:{
+  measures:'علائم افسردگی، اضطراب و استرس طی «هفته‌ی گذشته» با ۲۱ گویه (۷ گویه برای هر مقیاس). پاسخ‌ها ۰ تا ۳ هستند و نمره‌ی هر مقیاس در ۲ ضرب می‌شود (حداکثر ۴۲). نقطه‌های برش از جدول Lovibond & Lovibond گرفته شده است؛ متن فارسی ترجمه‌ی آزاد است و می‌توانید با نسخه‌ی رسمی هنجاریابی‌شده‌ی ایران (صاحبی و همکاران) جایگزین کنید.',
+  admin:['پیش از شروع، رضایت آگاهانه و محرمانگی نتیجه را توضیح دهید.','فرد باید تنها باشد و بداند نتیجه برای تنبیه یا اخراج استفاده نمی‌شود.','اگر گویه‌ی ۲۱ بالا بود، همان روز با فرد صحبت و ارجاع را هماهنگ کنید.'],
+  use:['پرسنل فعلی: پایش سلامت روان، پس از حادثه، شیفت‌کاران، مشاغل پراسترس.','استخدام: توصیه نمی‌شود به‌صورت غربالگری رد/قبول استفاده شود؛ در معاینات قبل از استخدام فقط با نظر روان‌شناس.'],
+  limits:['ابزار غربالگری است و تشخیص بالینی نیست.','نتیجه وضعیت یک هفته را نشان می‌دهد؛ رویدادهای اخیر (سوگ، مشکل مالی) نمره را تغییر می‌دهند.','برای تصمیم‌های استخدامی و اخراج به‌تنهایی کافی و مجاز نیست.']
+ }
+},
+{
+ id:'safety', title:'نگرش و رفتار ایمنی', short:'ایمنی', minutes:5, scale:{min:1,max:5,labels:AGREE5},
+ intro:'به عبارت‌هایی که درباره‌ی رفتار شما در کار است صادقانه پاسخ دهید. این پرسشنامه برای شناخت نیازهای آموزشی است.',
+ items:[
+  ['حتی اگر کار عجله‌ای باشد، تجهیزات حفاظت فردی را حتماً به کار می‌برم.','R'],
+  ['گاهی دستورالعمل کار ایمن را برای سریع‌تر تمام شدن کار دور می‌زنم.','R',1],
+  ['قبل از شروع کار روی دستگاه، قفل و برچسب (LOTO) و قطع انرژی را حتماً انجام می‌دهم.','R'],
+  ['اگر سرپرست نگاه نکند، رعایت برخی مقررات ایمنی برایم کم‌اهمیت می‌شود.','R',1],
+  ['از انجام کارهای پرخطر هیجان می‌گیرم.','K'],['اگر خطر را کم بدانم، بدون احتیاط کار می‌کنم.','K'],
+  ['برای اینکه از همکاران عقب نمانم، حاضرم ریسک بیشتری بپذیرم.','K'],
+  ['قبل از کارهای ناآشنا ترجیح می‌دهم مطمئن شوم و بعد شروع کنم.','K',1],
+  ['هنگام راه رفتن در کارخانه محیط اطراف را از نظر خطر زیر نظر دارم.','H'],
+  ['اغلب متوجه می‌شوم حواسم به محیط نبوده و چیزی نزدیک بود اتفاق بیفتد.','H',1],
+  ['پیش از شروع هر کار، خطرات احتمالی آن را مرور می‌کنم.','H'],
+  ['فکر می‌کنم حوادث بیشتر به شانس بستگی دارند تا رفتار افراد.','H',1],
+  ['اگر خطری ببینم، حتی اگر مربوط به من نباشد، گزارش می‌دهم.','M'],
+  ['اگر حادثه‌ی کوچکی رخ دهد و آسیبی نزند، ترجیح می‌دهم گزارش نکنم.','M',1],
+  ['به همکاران تازه‌کار روش ایمن انجام کار را یادآوری می‌کنم.','M'],['خود را در برابر ایمنی همکارانم هم مسئول می‌دانم.','M']
+ ],
+ dims:{
+  R:{name:'پایبندی به مقررات ایمنی',bands:[B(10,'ضعیف','bad','احتمال دورزدن مقررات؛ نیاز به آموزش، نظارت و مصاحبه‌ی رفتاری.'),B(14,'متوسط','mid','پایبندی متوسط؛ آموزش یادآوری مفید است.'),B(17,'خوب','good','پایبندی خوب.'),B(FINAL,'عالی','good','پایبندی بسیار خوب.')]},
+  K:{name:'ریسک‌پذیری (نمره‌ی بالا = ریسک‌پذیری بیشتر)',bands:[B(9,'کم','good','محتاط.'),B(13,'متوسط','mid','ریسک‌پذیری معمول.'),B(16,'بالا','warn','تمایل به پذیرش ریسک؛ در کارهای پرخطر نظارت و آموزش بیشتر لازم است.'),B(FINAL,'بسیار بالا','bad','ریسک‌پذیری بسیار بالا؛ برای مشاغل پرخطر (ارتفاع، برق، جرثقیل، لیفتراک) ارزیابی تکمیلی لازم است.')]},
+  H:{name:'خطرشناسی و هوشیاری',bands:[B(10,'ضعیف','bad','هوشیاری و خطرشناسی پایین؛ آموزش شناسایی خطر و بازدید همراه.'),B(14,'متوسط','mid','قابل قبول؛ با آموزش بهبود می‌یابد.'),B(17,'خوب','good','خطرشناسی خوب.'),B(FINAL,'عالی','good','خطرشناسی بسیار خوب.')]},
+  M:{name:'مسئولیت‌پذیری و گزارش‌دهی',bands:[B(10,'ضعیف','bad','احتمال عدم گزارش خطر و شبه‌حادثه؛ فرهنگ گزارش‌دهی بدون سرزنش را آموزش دهید.'),B(14,'متوسط','mid','متوسط.'),B(17,'خوب','good','خوب.'),B(FINAL,'عالی','good','بسیار خوب؛ می‌تواند ناظر ایمنی همکاران (HSE رابط) باشد.')]}
+ },
+ guide:{
+  measures:'چهار بُعد رفتار ایمن: پایبندی به مقررات، ریسک‌پذیری، خطرشناسی و مسئولیت‌پذیری/گزارش‌دهی (هر بُعد ۴ گویه، نمره‌ی ۴ تا ۲۰). گویه‌ها اصل و مناسب محیط کارخانه‌اند و برای شناخت نیاز آموزشی طراحی شده‌اند.',
+  admin:['به فرد بگویید نتیجه برای آموزش و بهبود ایمنی است نه تنبیه؛ در غیر این صورت پاسخ‌ها مطلوب‌نما می‌شود.','همراه با مشاهده‌ی رفتار در محل کار و سوابق شبه‌حادثه تفسیر شود.'],
+  use:['استخدام: مشاغل پرخطر (لیفتراک، جرثقیل، برق، مواد شیمیایی).','پرسنل فعلی: برنامه‌ریزی آموزش، پس از تکرار حادثه یا شبه‌حادثه.'],
+  limits:['هنجار ملی ندارد؛ بهتر است پس از جمع‌آوری نمرات کارکنان، میانگین واحد خودتان را مبنا قرار دهید.','پیش‌بینی قطعی حادثه نیست.']
+ }
+},
+{
+ id:'integrity', title:'درست‌کاری و مسئولیت‌پذیری (دارای مقیاس روایی)', short:'درست‌کاری', minutes:4, scale:{min:1,max:5,labels:AGREE5},
+ intro:'به هر عبارت صادقانه پاسخ دهید. پاسخ‌ها محرمانه است.',
+ items:[
+  ['اگر اشتباهی در کارم رخ دهد، بدون ترس از توبیخ آن را به سرپرست می‌گویم.','I'],
+  ['اگر کسی نبیند، برداشتن وسایل یا مواد کم‌ارزش کارخانه برای مصرف شخصی اشکالی ندارد.','I',1],
+  ['در ثبت اطلاعات و گزارش‌ها دقیق و راست‌گو هستم، حتی وقتی به ضررم باشد.','I'],
+  ['برای رسیدن به هدف تولید، گاهی ثبت اعداد را کمی «مرتب» می‌کنم.','I',1],
+  ['به قول و تعهدی که داده‌ام پایبندم.','I'],['اگر همکارم تخلف کند، ترجیح می‌دهم دخالت نکنم.','I',1],
+  ['کوتاهی در کار را گاهی گردن دیگران می‌اندازم.','I',1],['در ساعات کاری، وقتم را صرف کار می‌کنم و از آن سوءاستفاده نمی‌کنم.','I'],
+  ['تا به حال هیچ‌وقت به محل کار دیر نرسیده‌ام.','V'],['هرگز از کسی عصبانی نشده‌ام.','V'],
+  ['همیشه با همه‌ی افراد با احترام کامل رفتار کرده‌ام، بدون هیچ استثنایی.','V'],['هیچ‌گاه حتی یک دروغ کوچک هم نگفته‌ام.','V']
+ ],
+ dims:{
+  I:{name:'درست‌کاری و مسئولیت‌پذیری',bands:[B(23,'پایین','bad','نگرش‌های پرخطر نسبت به صداقت و مسئولیت؛ مصاحبه‌ی رفتاری و بررسی سوابق ضروری است.'),B(31,'متوسط','mid','قابل قبول؛ با مصاحبه تکمیل شود.'),B(FINAL,'بالا','good','نگرش مسئولانه و صادقانه.')]},
+  V:{name:'مقیاس روایی (مطلوب‌نمایی)',bands:[B(12,'قابل قبول','good','پاسخ‌دهی واقع‌بینانه.'),B(15,'احتیاط','mid','کمی تمایل به نمایش مطلوب؛ نمره‌ی درست‌کاری را با احتیاط بخوانید.'),B(FINAL,'مشکوک','warn','تمایل زیاد به پاسخ‌های «بی‌نقص». اعتبار سایر نمرات پرسش‌نامه‌ها پایین است؛ آزمون را با توضیح مجدد تکرار یا مصاحبه کنید.')]}
+ },
+ flags:(ans,sc)=>{const f=[];if(sc.V&&sc.V.value>=16)f.push({tone:'warn',text:'نمره‌ی مقیاس روایی بالا است؛ نتایج درست‌کاری و سایر پرسشنامه‌های خودگزارشی این فرد با احتیاط تفسیر شود.'});return f;},
+ guide:{
+  measures:'نگرش به صداقت، مسئولیت و پایبندی به تعهدات (۸ گویه) به‌همراه ۴ گویه‌ی روایی که پاسخ‌دهیِ «بی‌نقص‌نما» را آشکار می‌کند.',
+  admin:['در استخدام، فضا را تهدیدآمیز نکنید؛ توضیح دهید پاسخ‌ها محرمانه است.','اگر مقیاس روایی بالا بود، با فرد مصاحبه کنید و نتیجه‌ی همین فرد را قطعی نگیرید.'],
+  use:['استخدام: انبار، حسابداری، نگهبانی، خرید، مسئولان کیفیت و ایمنی.','پرسنل فعلی: ارتقا به نقش‌های حساس.'],
+  limits:['ابزار خودگزارشی است و تنها قرینه‌ای برای مصاحبه و بررسی سوابق است.','نمره‌ی پایین به‌معنای نادرستی فرد نیست.']
+ }
+},
+{
+ id:'burnout', title:'فرسودگی شغلی و استرس کاری', short:'فرسودگی', minutes:4, scale:{min:0,max:4,labels:['هرگز','به‌ندرت','گاهی','اغلب','همیشه']},
+ intro:'به هر عبارت بر اساس «ماه‌های اخیر» پاسخ دهید و بگویید این احساس را چقدر تجربه می‌کنید.',
+ items:[
+  ['پایان روز کاری احساس می‌کنم کاملاً تحلیل رفته‌ام.','X'],['صبح‌ها از فکر رفتن به سر کار خسته می‌شوم.','X'],
+  ['کار کردن با دستگاه‌ها و افراد در طول روز برایم بسیار فشارآور است.','X'],['احساس می‌کنم به انتهای توانم رسیده‌ام.','X'],
+  ['نسبت به اهمیت کارم بی‌تفاوت شده‌ام.','Y'],['از وقتی این شغل را دارم، نسبت به کارم بدبین‌تر شده‌ام.','Y'],
+  ['به کیفیت کارم کمتر از قبل اهمیت می‌دهم.','Y'],['احساس می‌کنم سازمان برای زحمت من ارزشی قائل نیست.','Y'],
+  ['در انجام وظایفم احساس شایستگی می‌کنم.','F'],['می‌توانم مشکلات کاری را به‌طور مؤثر حل کنم.','F'],
+  ['از کارهایی که انجام می‌دهم احساس موفقیت دارم.','F'],['با اعتمادبه‌نفس کارهایم را پیش می‌برم.','F']
+ ],
+ dims:{
+  X:{name:'خستگی هیجانی',bands:[B(5,'کم','good','در محدوده‌ی خوب.'),B(9,'متوسط','mid','نشانه‌های خستگی؛ بازبینی بار کاری و استراحت‌ها.'),B(12,'بالا','warn','خستگی بالا؛ گفت‌وگو با سرپرست و بازنگری شیفت و بار کار.'),B(FINAL,'بسیار بالا','bad','خستگی بسیار بالا؛ مداخله‌ی سریع و پیگیری سلامت.')]},
+  Y:{name:'بدبینی و دلسردی شغلی',bands:[B(5,'کم','good','وابستگی مثبت به کار.'),B(9,'متوسط','mid','نشانه‌های کم‌انگیزگی.'),B(12,'بالا','warn','دلسردی شغلی؛ بررسی عدالت سازمانی، قدردانی و مسیر ارتقا.'),B(FINAL,'بسیار بالا','bad','دلسردی شدید؛ خطر ترک کار، بی‌دقتی و تخلف بیشتر است.')]},
+  F:{name:'احساس کارآمدی (نمره‌ی بالا = بهتر)',bands:[B(5,'پایین','warn','احساس ناکارآمدی؛ آموزش، بازخورد و حمایت.'),B(10,'متوسط','mid','متوسط.'),B(FINAL,'بالا','good','احساس کارآمدی مناسب.')]}
+ },
+ guide:{
+  measures:'سه جنبه‌ی فرسودگی شغلی: خستگی هیجانی، دلسردی/بدبینی شغلی و احساس کارآمدی (هر کدام ۴ گویه، نمره‌ی ۰ تا ۱۶). گویه‌ها اصل و بر پایه‌ی سازه‌های شناخته‌شده‌ی فرسودگی نوشته شده‌اند.',
+  admin:['برای کارکنان فعلی؛ در جلسه‌ی خصوصی و با محرمانگی اجرا شود.','نتایج گروهی (به‌تفکیک واحد) می‌تواند مبنای اقدامات سازمانی باشد.'],
+  use:['پرسنل فعلی: پایش دوره‌ای، پس از اضافه‌کاری طولانی، تغییرات سازمانی.'],
+  limits:['تشخیص بالینی نیست؛ فرسودگی اغلب پیامد شرایط کار است و راه‌حل آن اصلاح شرایط است نه صرفاً کمک به فرد.']
+ }
+},
+{
+ id:'fatigue', title:'خستگی، خواب‌آلودگی و هوشیاری (شیفت‌کاری)', short:'خستگی', minutes:3,
+ scale:{min:0,max:3,labels:['هرگز','گاهی','اغلب','تقریباً همیشه']},
+ intro:'به هر عبارت بر اساس «چند هفته‌ی اخیر» پاسخ دهید.',
+ items:[
+  ['هنگام کار احساس خواب‌آلودگی می‌کنم.','F'],['بعد از خواب شبانه یا استراحت، احساس سرحالی نمی‌کنم.','F'],
+  ['در شیفت‌های شب یا بعدازظهر به‌سختی بیدار می‌مانم.','F'],['تمرکزم در ساعات پایانی شیفت به‌طور محسوس افت می‌کند.','F'],
+  ['هنگام رانندگی به محل کار یا از آن خواب‌آلودگی یا چرت کوتاه تجربه کرده‌ام.','F'],
+  ['هنگام کار با دستگاه یا ماشین‌آلات نزدیک بوده چرت بزنم یا حواسم پرت شود.','F'],
+  ['برای بیدار ماندن به کافئین یا مواد محرک زیاد نیاز دارم.','F'],['خواب شبانه‌ام کمتر از ۶ ساعت است یا مکرر قطع می‌شود.','F']
+ ],
+ dims:{
+  F:{name:'خستگی و خواب‌آلودگی',bands:[B(7,'کم','good','هوشیاری مناسب.'),B(13,'متوسط','mid','نشانه‌های خستگی؛ بازبینی نظم شیفت و بهداشت خواب.'),B(18,'بالا','warn','خستگی بالا؛ خطر خطا و حادثه؛ بررسی برنامه‌ی شیفت و مشاوره‌ی پزشک طب کار.'),B(FINAL,'بسیار بالا','bad','خستگی بسیار بالا؛ ارزیابی پزشکی (از جمله اختلال خواب) و محدودیت موقت در کارهای پرخطر.')]}
+ },
+ flags:(ans)=>{const f=[];if(ans[4]>=2||ans[5]>=2)f.push({tone:'bad',text:'گزارش چرت‌زدن یا خواب‌آلودگی حین رانندگی یا کار با ماشین‌آلات. ارزیابی پزشکی (بررسی اختلال خواب) و بازنگری برنامه‌ی شیفت توصیه می‌شود و تا بررسی، کار پرخطر باید با احتیاط باشد.'});return f;},
+ guide:{
+  measures:'میزان خستگی و خواب‌آلودگی مرتبط با کار با ۸ گویه (نمره‌ی ۰ تا ۲۴) و دو گویه‌ی هشدار ایمنی (رانندگی و ماشین‌آلات).',
+  admin:['برای رانندگان، اپراتورهای لیفتراک/جرثقیل، شیفت‌کاران شب و کارکنان ماشین‌آلات سنگین توصیه می‌شود.','دوره‌ای (مثلاً هر ۶ ماه) اجرا و روند مقایسه شود.'],
+  use:['استخدام: مشاغل شیفتی و رانندگی.','پرسنل فعلی: پایش شیفت‌کاران و پس از شبه‌حادثه.'],
+  limits:['ابزار خودگزارشی و جایگزین ارزیابی پزشکی خواب نیست.']
+ }
+}
+];
+/* ====== آزمون‌های عملکردی (رایانه‌ای) ====== */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+const sd=a=>{if(a.length<2)return 0;const m=mean(a);return Math.sqrt(mean(a.map(x=>(x-m)**2)))};
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+function band(bands,v){for(const b of bands){if(v<=b.upTo)return b}return bands[bands.length-1]}
+const clamp01=x=>Math.max(0,Math.min(1,x));
+
+/* ---- ۱) زمان واکنش ---- */
+function runReaction(el,finish){
+  const TOTAL=6; let trial=-1,times=[],ant=0,timer=null,start=0,state='idle',dead=false;
+  el.innerHTML='<div class="stage" id="st" tabindex="0" role="button" aria-label="ناحیه‌ی واکنش"><div><div class="big" id="sb">آماده‌اید؟</div><div class="small" id="ss">برای شروع کلیک کنید یا Space بزنید</div></div></div><p class="small muted" id="si" style="margin-top:8px">یک مرحله‌ی تمرینی و سپس ۵ مرحله‌ی ثبت‌شده انجام می‌شود.</p>';
+  const st=el.querySelector('#st'),sb=el.querySelector('#sb'),ss=el.querySelector('#ss'),si=el.querySelector('#si');
+  const set=(c,b,s)=>{st.className='stage '+c;sb.textContent=b;ss.textContent=s||''};
+  const begin=()=>{state='wait';set('wait','صبر کنید…','وقتی صفحه سبز شد، فوراً بزنید');si.textContent=trial===0?'مرحله‌ی تمرینی':'مرحله '+trial+' از '+(TOTAL-1);
+    timer=setTimeout(()=>{state='go';start=performance.now();set('go','حالا!','')},1500+Math.random()*2700)};
+  const hit=()=>{
+    if(dead)return;
+    if(state==='idle'){trial=0;begin();return}
+    if(state==='wait'){clearTimeout(timer);ant++;state='between';set('','زود بود!','برای تکرار همین مرحله بزنید');return}
+    if(state==='go'){const rt=performance.now()-start;state='between';if(trial>0)times.push(rt);trial++;
+      if(trial>=TOTAL){dead=true;cleanup();finish({times:times.map(Math.round),ant});return}
+      set('',Math.round(rt)+' میلی‌ثانیه','برای مرحله‌ی بعد بزنید');return}
+    if(state==='between')begin();
+  };
+  const kd=e=>{if(e.code==='Space'){e.preventDefault();hit()}};
+  st.addEventListener('pointerdown',e=>{e.preventDefault();hit()});
+  document.addEventListener('keydown',kd);
+  function cleanup(){clearTimeout(timer);document.removeEventListener('keydown',kd)}
+  return ()=>{dead=true;cleanup()};
+}
+function interpReaction(raw){
+  const m=mean(raw.times),s=sd(raw.times);
+  const d1=band([{upTo:250,label:'عالی',tone:'good',text:'واکنش بسیار سریع.'},{upTo:320,label:'طبیعی',tone:'good',text:'واکنش در محدوده‌ی طبیعی.'},{upTo:400,label:'کند',tone:'mid',text:'کمی کندتر از معمول؛ خستگی، بی‌خوابی یا تجهیزات کند را در نظر بگیرید.'},{upTo:99999,label:'بسیار کند',tone:'warn',text:'واکنش بسیار کند؛ برای رانندگی/جرثقیل/کار با ماشین‌آلات تکرار آزمون و ارزیابی پزشکی لازم است.'}],m);
+  const d2=band([{upTo:40,label:'پایدار',tone:'good',text:'واکنش‌ها یکنواخت است.'},{upTo:80,label:'متوسط',tone:'mid',text:'کمی نوسان.'},{upTo:99999,label:'ناپایدار',tone:'warn',text:'نوسان زیاد؛ نشانه‌ی افت توجه یا بی‌ثباتی هوشیاری.'}],s);
+  const d3=raw.ant===0?{label:'بدون پیش‌دستی',tone:'good',text:'تکانشگری مشاهده نشد.'}:raw.ant<=2?{label:'گاهی',tone:'mid',text:'چند بار پیش از علامت واکنش داده است.'}:{label:'زیاد',tone:'warn',text:'پیش‌دستی مکرر؛ نشانه‌ی تکانشگری یا بی‌صبری.'};
+  return{dims:[
+    {name:'میانگین زمان واکنش',display:Math.round(m)+' ms',pct:clamp01((m-150)/450),...d1},
+    {name:'نوسان واکنش (انحراف معیار)',display:Math.round(s)+' ms',pct:clamp01(s/150),...d2},
+    {name:'واکنش زودهنگام (پیش‌دستی)',display:raw.ant+' بار',pct:clamp01(raw.ant/5),...d3}],flags:[]};
+}
+
+/* ---- ۲) استروپ رنگ-کلمه ---- */
+const SCOL=[{n:'قرمز',c:'#d62828'},{n:'آبی',c:'#2a6df0'},{n:'سبز',c:'#1fa75a'},{n:'زرد',c:'#f0c419'}];
+function runStroop(el,finish){
+  let dead=false,keyH=null,pending=null;
+  el.innerHTML='<div class="stage" id="st" style="background:#20262c;color:#fff"><div id="sc"></div></div><div class="colorbtns" id="cb"></div><p class="small muted" id="si" style="margin-top:8px"></p>';
+  const sc=el.querySelector('#sc'),cb=el.querySelector('#cb'),si=el.querySelector('#si');
+  SCOL.forEach((c,i)=>{const b=document.createElement('button');b.className='cbtn';b.style.background=c.c;b.style.borderColor=c.c;b.textContent=(i+1);b.setAttribute('aria-label',c.n);b.onclick=()=>ans(i);cb.appendChild(b)});
+  const ans=i=>{if(pending){const p=pending;pending=null;p(i)}};
+  keyH=e=>{const k=parseInt(e.key,10);if(k>=1&&k<=4)ans(k-1)};
+  document.addEventListener('keydown',keyH);
+  const waitStart=txt=>new Promise(r=>{sc.innerHTML='<div class="small" style="max-width:520px;line-height:2">'+txt+'</div><p><button class="btn primary" id="go">شروع</button></p>';sc.querySelector('#go').onclick=r});
+  async function phase(trials){const out=[];for(const t of trials){if(dead)return out;sc.textContent='';await sleep(350);const w=document.createElement('div');w.className='big';w.style.color=SCOL[t.ink].c;w.textContent=t.word;sc.replaceChildren(w);const t0=performance.now();const r=await new Promise(res=>pending=res);if(dead)return out;out.push({rt:performance.now()-t0,ok:r===t.ink});sc.textContent=''}return out}
+  (async()=>{
+    await waitStart('<b>مرحله‌ی ۱:</b> به‌جای هر ■■■ رنگ آن را تشخیص دهید و دکمه‌ی همان رنگ (یا کلید ۱ تا ۴ صفحه‌کلید) را بزنید. هم سریع باشید هم درست.<br>۱=قرمز ۲=آبی ۳=سبز ۴=زرد');
+    const A=[];let last=-1;for(let i=0;i<12;i++){let k;do{k=Math.floor(Math.random()*4)}while(k===last);last=k;A.push({word:'■■■■',ink:k})}
+    const ra=await phase(A);if(dead)return;
+    await waitStart('<b>مرحله‌ی ۲:</b> اکنون کلمات رنگ‌ها نوشته می‌شوند. <b>رنگِ حروف</b> را تشخیص دهید، نه معنای کلمه را. مثلاً کلمه‌ی «قرمز» با رنگ آبی → پاسخ آبی.');
+    const Bt=[];last=-1;for(let i=0;i<20;i++){let k;do{k=Math.floor(Math.random()*4)}while(k===last);last=k;let w;do{w=Math.floor(Math.random()*4)}while(w===k);Bt.push({word:SCOL[w].n,ink:k})}
+    const rb=await phase(Bt);if(dead)return;
+    cleanup();finish({a:ra,b:rb});
+  })();
+  function cleanup(){document.removeEventListener('keydown',keyH)}
+  return ()=>{dead=true;cleanup();if(pending){pending=null}};
+}
+function interpStroop(raw){
+  const okA=raw.a.filter(x=>x.ok),okB=raw.b.filter(x=>x.ok);
+  const ma=mean(okA.map(x=>x.rt)),mb=mean(okB.map(x=>x.rt)),inter=mb-ma;
+  const accA=raw.a.length?okA.length/raw.a.length*100:0,accB=raw.b.length?okB.length/raw.b.length*100:0;
+  const d1=band([{upTo:150,label:'خوب',tone:'good',text:'توجه انتخابی و مهار پاسخ مناسب.'},{upTo:250,label:'متوسط',tone:'mid',text:'اثر تداخل متوسط.'},{upTo:99999,label:'بالا',tone:'warn',text:'دشواری در مهار پاسخ خودکار و توجه انتخابی؛ در کارهای نیازمند تمرکز در شرایط حواس‌پرتی احتیاط شود.'}],inter);
+  const d2=accB>=94?{label:'دقت بالا',tone:'good',text:'خطای کم.'}:accB>=85?{label:'متوسط',tone:'mid',text:'چند خطا.'}:{label:'دقت پایین',tone:'warn',text:'خطای زیاد در شرایط تداخل؛ تکانشگری یا افت توجه.'};
+  const flags=[];if(accA<80)flags.push({tone:'warn',text:'دقت در مرحله‌ی تشخیص ساده‌ی رنگ پایین بود. احتمال اختلال دید رنگ یا بی‌توجهی وجود دارد؛ دید رنگ را جداگانه (مثلاً با آزمون ایشی‌هارا در معاینات شغلی) بررسی کنید و تنظیم رنگ مانیتور را کنترل کنید.'});
+  return{dims:[
+    {name:'اثر تداخل (RT ناهمخوان − RT ساده)',display:Math.round(inter)+' ms',pct:clamp01(inter/400),...d1},
+    {name:'دقت در مرحله‌ی ناهمخوان',display:Math.round(accB)+'٪',pct:clamp01(accB/100),...d2},
+    {name:'سرعت تشخیص رنگ ساده',display:Math.round(ma)+' ms',pct:clamp01((ma-300)/900),label:'اطلاعاتی',tone:'info',text:'سرعت پردازش پایه (به‌تنهایی تفسیر نمی‌شود).'}],flags};
+}
+
+/* ---- ۳) حافظه‌ی ارقام ---- */
+function runDigits(el,finish){
+  let dead=false,submit=null,best={f:0,b:0};
+  el.innerHTML='<div class="stage" id="st"><div style="width:100%"><div class="big" id="dg" style="direction:ltr"></div><div class="digits-in" id="din"></div><div class="small" id="dm"></div><div class="keypad" id="kp" hidden></div></div></div>';
+  const dg=el.querySelector('#dg'),din=el.querySelector('#din'),dm=el.querySelector('#dm'),kp=el.querySelector('#kp');
+  let cur='';
+  const redraw=()=>{din.textContent=cur};
+  '1234567890⌫✓'.split('').forEach(k=>{const b=document.createElement('button');b.textContent=k;b.onclick=()=>press(k);kp.appendChild(b)});
+  const press=k=>{if(!submit)return;if(k==='⌫')cur=cur.slice(0,-1);else if(k==='✓'){const s=submit;submit=null;s(cur);return}else if(cur.length<12)cur+=k;redraw()};
+  const kd=e=>{if(/^[0-9]$/.test(e.key))press(e.key);else if(e.key==='Backspace')press('⌫');else if(e.key==='Enter')press('✓')};
+  document.addEventListener('keydown',kd);
+  const msg=(t,b)=>new Promise(r=>{dg.textContent='';din.textContent='';kp.hidden=true;dm.innerHTML='<div style="max-width:520px;margin:auto;line-height:2">'+t+'</div><p><button class="btn primary" id="ok">'+(b||'ادامه')+'</button></p>';dm.querySelector('#ok').onclick=r});
+  async function direction(dir){
+    let len=dir==='f'?3:2;const max=dir==='f'?9:8;
+    while(len<=max&&!dead){
+      let passed=false;
+      for(let t=0;t<2&&!passed&&!dead;t++){
+        const seq=[];for(let i=0;i<len;i++){let d;do{d=Math.floor(Math.random()*10)}while(seq.length&&d===seq[seq.length-1]);seq.push(d)}
+        dm.textContent='دقت کنید…';kp.hidden=true;din.textContent='';await sleep(700);
+        for(const d of seq){if(dead)return;dg.textContent=d;await sleep(800);dg.textContent='';await sleep(250)}
+        if(dead)return;
+        cur='';redraw();dm.textContent=dir==='f'?'ارقام را به همان ترتیب وارد کنید و ✓ بزنید':'ارقام را به‌صورت «برعکس» وارد کنید و ✓ بزنید';kp.hidden=false;
+        const ans=await new Promise(r=>submit=r);
+        const target=(dir==='f'?seq:seq.slice().reverse()).join('');
+        if(ans===target)passed=true;
+      }
+      if(passed){best[dir]=len;len++}else break;
+    }
+  }
+  (async()=>{
+    await msg('<b>بخش اول:</b> اعداد یکی‌یکی نمایش داده می‌شوند. آن‌ها را به همان ترتیب به خاطر بسپارید و سپس وارد کنید.');
+    await direction('f');if(dead)return;
+    await msg('<b>بخش دوم:</b> این بار اعداد را «برعکس» وارد کنید؛ مثلاً ۲-۵-۹ را به‌صورت ۹-۵-۲.');
+    await direction('b');if(dead)return;
+    cleanup();finish({f:best.f,b:best.b});
+  })();
+  function cleanup(){document.removeEventListener('keydown',kd)}
+  return ()=>{dead=true;cleanup();submit=null};
+}
+function interpDigits(raw){
+  const f=band([{upTo:4,label:'پایین',tone:'warn',text:'گنجایش حافظه‌ی کوتاه‌مدت کمتر از معمول.'},{upTo:6,label:'متوسط',tone:'mid',text:'طبیعی.'},{upTo:99,label:'خوب',tone:'good',text:'حافظه‌ی کوتاه‌مدت خوب.'}],raw.f);
+  const b=band([{upTo:3,label:'پایین',tone:'warn',text:'حافظه‌ی فعال ضعیف؛ در یادگیری دستورالعمل‌های چندمرحله‌ای مشکل ممکن است باشد.'},{upTo:4,label:'متوسط',tone:'mid',text:'طبیعی.'},{upTo:99,label:'خوب',tone:'good',text:'حافظه‌ی فعال خوب.'}],raw.b);
+  return{dims:[
+    {name:'حافظه‌ی ارقام مستقیم (بیشترین طول)',display:raw.f+' رقم',pct:clamp01(raw.f/9),...f},
+    {name:'حافظه‌ی ارقام معکوس (بیشترین طول)',display:raw.b+' رقم',pct:clamp01(raw.b/8),...b}],flags:[]};
+}
+
+/* ---- ۴) ردیابی اعداد و حروف (Trail A/B) ---- */
+function runTrail(el,finish){
+  const LET=['الف','ب','پ','ت','ث','ج','چ','ح','خ','د'];
+  let dead=false;
+  el.innerHTML='<div id="ti" class="small muted" style="margin-bottom:8px"></div><div class="trail" id="tr"></div><div id="tm"></div>';
+  const tr=el.querySelector('#tr'),ti=el.querySelector('#ti'),tm=el.querySelector('#tm');
+  const intro=(t)=>new Promise(r=>{tr.innerHTML='<div style="display:grid;place-items:center;height:100%;text-align:center;padding:16px"><div><p style="max-width:520px;line-height:2">'+t+'</p><button class="btn primary" id="go">شروع</button></div></div>';tr.querySelector('#go').onclick=r});
+  function layout(seq){
+    tr.innerHTML='';const cols=5,rows=Math.ceil(seq.length/cols);const cells=shuffle([...Array(cols*rows).keys()]).slice(0,seq.length);const nodes=[];
+    seq.forEach((lab,i)=>{const c=cells[i]%cols,r=Math.floor(cells[i]/cols);const x=(c+0.5)/cols*100+(Math.random()-.5)*8,y=(r+0.5)/rows*100+(Math.random()-.5)*10;
+      const b=document.createElement('button');b.className='node';b.textContent=lab;b.style.right=x+'%';b.style.top=y+'%';tr.appendChild(b);nodes.push(b)});
+    return nodes;
+  }
+  const play=(seq)=>new Promise(res=>{
+    const nodes=layout(seq);let idx=0,err=0;const t0=performance.now();
+    ti.textContent='بعدی: '+seq[0];
+    nodes.forEach((n,i)=>n.onclick=()=>{
+      if(dead)return;
+      if(i===idx){n.classList.add('done');idx++;if(idx>=seq.length){res({sec:(performance.now()-t0)/1000,err})}else ti.textContent='بعدی: '+seq[idx]}
+      else{err++;n.classList.remove('err');void n.offsetWidth;n.classList.add('err')}
+    });
+  });
+  (async()=>{
+    await intro('<b>بخش اول:</b> اعداد ۱ تا ۲۰ را به ترتیب و تا جای ممکن سریع لمس یا کلیک کنید. اگر اشتباه کردید دوباره درست را بزنید؛ زمان ادامه دارد.');
+    const A=[...Array(20).keys()].map(i=>String(i+1));const ra=await play(A);if(dead)return;
+    await intro('<b>بخش دوم:</b> این بار به‌صورت یک‌درمیان عدد و حرف: ۱ ← الف ← ۲ ← ب ← ۳ ← پ … تا ۱۰ ← د. حروف به ترتیب: الف ب پ ت ث ج چ ح خ د.');
+    const Bs=[];for(let i=0;i<10;i++){Bs.push(String(i+1));Bs.push(LET[i])}
+    const rb=await play(Bs);if(dead)return;
+    finish({a:+ra.sec.toFixed(1),b:+rb.sec.toFixed(1),errA:ra.err,errB:rb.err});
+  })();
+  return()=>{dead=true};
+}
+function interpTrail(raw){
+  const a=band([{upTo:30,label:'سریع',tone:'good',text:'سرعت دیداری-حرکتی و جستجوی بصری خوب.'},{upTo:50,label:'متوسط',tone:'mid',text:'طبیعی.'},{upTo:99999,label:'کند',tone:'warn',text:'سرعت پردازش بصری-حرکتی پایین؛ ابزار (ماوس/صفحه‌ی لمسی) و خستگی را هم در نظر بگیرید.'}],raw.a);
+  const b=band([{upTo:75,label:'سریع',tone:'good',text:'انعطاف شناختی و جابه‌جایی توجه خوب.'},{upTo:120,label:'متوسط',tone:'mid',text:'طبیعی.'},{upTo:99999,label:'کند',tone:'warn',text:'دشواری در جابه‌جایی توجه و انجام چندکاره‌ای؛ برای پست‌های نیازمند تصمیم سریع بررسی تکمیلی.'}],raw.b);
+  const e=raw.errA+raw.errB;const ec=e<=2?{label:'کم',tone:'good',text:'خطای کم.'}:e<=5?{label:'متوسط',tone:'mid',text:'چند خطا.'}:{label:'زیاد',tone:'warn',text:'خطای زیاد؛ تکانشگری یا بی‌دقتی.'};
+  return{dims:[
+    {name:'زمان بخش الف (اعداد)',display:raw.a+' ثانیه',pct:clamp01(raw.a/90),...a},
+    {name:'زمان بخش ب (عدد و حرف)',display:raw.b+' ثانیه',pct:clamp01(raw.b/180),...b},
+    {name:'تعداد خطاها',display:e+' خطا',pct:clamp01(e/10),...ec}],flags:[]};
+}
+
+const TASKS=[
+ {id:'reaction',title:'زمان واکنش ساده',short:'واکنش',minutes:2,run:runReaction,interpret:interpReaction,
+  intro:'صفحه ابتدا قرمز است. به‌محض سبز شدن، هرچه سریع‌تر کلیک کنید (یا Space بزنید). پیش از سبز شدن کلیک نکنید.',
+  guide:{measures:'سرعت و ثبات واکنش به یک محرک ساده (۵ بار ثبت‌شده پس از یک تمرین) و تکانشگری (واکنش پیش از علامت).',
+   admin:['با موس یا صفحه‌ی لمسی و روی همان دستگاه برای همه‌ی افراد اجرا کنید؛ مقایسه بین دستگاه‌های مختلف معتبر نیست.','هر نفر ترجیحاً دو بار در روزهای مختلف؛ اولین بار اثر یادگیری دارد.','قهوه، کم‌خوابی، پس از شیفت شب و مشکل بینایی را ثبت کنید.'],
+   use:['استخدام: رانندگان، اپراتورهای جرثقیل/لیفتراک، اپراتور خط پرسرعت.','پرسنل فعلی: پس از حادثه، پایش دوره‌ای، بررسی اثر خستگی.'],
+   limits:['تأخیر مرورگر و نمایشگر حدود ۳۰ تا ۶۰ میلی‌ثانیه به زمان‌ها اضافه می‌کند؛ مرزهای تفسیر تقریبی است و بهتر است هنجار داخلی کارخانه را بسازید.','جایگزین آزمون‌های رسمی رانندگی یا معاینه‌ی طب کار نیست.']}},
+ {id:'stroop',title:'استروپ (توجه انتخابی و مهار پاسخ)',short:'توجه',minutes:4,run:runStroop,interpret:interpStroop,
+  intro:'رنگِ حروف را تشخیص دهید، نه معنای کلمه را. دقت و سرعت هر دو مهم است.',
+  guide:{measures:'توانایی نادیده گرفتن اطلاعات مزاحم، توجه انتخابی و مهار پاسخ خودکار. شاخص اصلی «اثر تداخل» (تفاضل زمان پاسخ در حالت ناهمخوان و ساده) است.',
+   admin:['نمایشگر با رنگ درست و روشنایی مناسب؛ حالت «شب» یا فیلتر آبی را خاموش کنید.','پیش از آزمون بپرسید آیا نقص دید رنگ دارند.','اجرا با صفحه‌کلید (۱ تا ۴) سریع‌تر است.'],
+   use:['استخدام: کنترل‌روم، کارهای بازرسی/QC، اپراتورهای چندمنظوره.','پرسنل فعلی: افراد با خطاهای مکرر در تمرکز.'],
+   limits:['نقص دید رنگ نتیجه را مخدوش می‌کند.','نمره به زبان، سواد خواندن و آشنایی با رایانه حساس است.']}},
+ {id:'digits',title:'حافظه‌ی ارقام (مستقیم و معکوس)',short:'حافظه',minutes:5,run:runDigits,interpret:interpDigits,
+  intro:'اعداد یکی‌یکی نمایش داده می‌شوند؛ آن‌ها را به‌خاطر بسپارید و وارد کنید. در بخش دوم باید برعکس وارد کنید.',
+  guide:{measures:'حافظه‌ی کوتاه‌مدت (مستقیم) و حافظه‌ی فعال (معکوس). از طول ۳ شروع می‌شود (معکوس: ۲)؛ هر طول دو فرصت دارد و پس از دو خطای متوالی آن بخش پایان می‌یابد.',
+   admin:['محیط بسیار ساکت؛ یادداشت‌برداری و بلند خواندن اعداد ممنوع.','برای کم‌سوادان یا کسانی که با صفحه‌کلید مشکل دارند، فرد کنار آنها بماند ولی راهنمایی نکند.'],
+   use:['استخدام: مشاغل نیازمند یادگیری رویه‌های چندمرحله‌ای، اپراتور اتاق کنترل.','پرسنل فعلی: ارزیابی نیاز به آموزش با ابزار کمکی (چک‌لیست).'],
+   limits:['اضطراب و بی‌خوابی نمره را کاهش می‌دهد؛ تفسیر پایین بودن نمره به‌تنهایی کافی نیست.']}},
+ {id:'trail',title:'ردیابی اعداد و حروف (سرعت پردازش و انعطاف)',short:'سرعت پردازش',minutes:4,run:runTrail,interpret:interpTrail,
+  intro:'ابتدا اعداد ۱ تا ۲۰ را به ترتیب لمس کنید، سپس به‌صورت یک‌درمیان عدد و حرف.',
+  guide:{measures:'جستجوی دیداری، سرعت دیداری-حرکتی (بخش الف) و جابه‌جایی توجه / انعطاف شناختی (بخش ب). زمان به ثانیه و تعداد خطاها ثبت می‌شود.',
+   admin:['با ماوس یا لمس؛ برای همه‌ی افراد یک نوع دستگاه.','پیش از شروع بپرسید حروف الفبا را به‌ترتیب می‌دانند (برای بی‌سوادان نامناسب است).'],
+   use:['استخدام: سرپرستان، اپراتور مانیتورینگ، کنترل کیفیت.','پرسنل فعلی: افت عملکرد، بازگشت از بیماری یا حادثه.'],
+   limits:['نتیجه به مهارت ماوس و صفحه‌ی لمسی وابسته است.','هنجارها برای مقایسه‌ی کلی است؛ هنجار داخلی بسازید.']}}
+];
+/* ====== هسته‌ی برنامه: داده، نمره‌گذاری، نمایش ====== */
+const KEY='rsi_v1';
+let mem=null;
+function loadDB(){
+  try{const s=localStorage.getItem(KEY);if(s)return JSON.parse(s)}catch(e){}
+  return mem||{org:'',examiner:'',people:[]};
+}
+let DB=loadDB();
+function saveDB(){mem=DB;try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){toast('ذخیره‌ی خودکار ممکن نیست؛ حتماً فایل پشتیبان بگیرید')}}
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const fa=s=>String(s).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
+const jdate=t=>{try{return new Date(t).toLocaleDateString('fa-IR')}catch(e){return ''}};
+const jdt=t=>{try{return new Date(t).toLocaleDateString('fa-IR')+' '+new Date(t).toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'})}catch(e){return ''}};
+function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)}
+const ALL=[...QUESTIONNAIRES.map(q=>({...q,type:'q'})),...TASKS.map(t=>({...t,type:'t'}))];
+const byId=id=>ALL.find(x=>x.id===id);
+const KIND={candidate:'داوطلب استخدام',employee:'شاغل (پرسنل)'};
+const TONE_CLS={good:'b-good',mid:'b-mid',warn:'b-warn',bad:'b-bad',info:'b-info'};
+const BATTERIES=[
+ {name:'اپراتور خط تولید / ماشین‌آلات',tests:['ipip','safety','integrity','fatigue','reaction','stroop'],note:'تمرکز بر رفتار ایمن، هوشیاری و توجه.'},
+ {name:'رانندگی، لیفتراک، جرثقیل',tests:['safety','fatigue','reaction','stroop','dass'],note:'تمرکز بر زمان واکنش، خواب‌آلودگی و ریسک‌پذیری.'},
+ {name:'سرپرست و مدیر',tests:['ipip','integrity','burnout','dass','trail'],note:'تمرکز بر ویژگی‌های شخصیتی، فرسودگی و انعطاف شناختی.'},
+ {name:'انباردار، نگهبان، مالی',tests:['ipip','integrity','safety'],note:'تمرکز بر درست‌کاری و وظیفه‌شناسی.'},
+ {name:'کنترل کیفیت، آزمایشگاه، کنترل‌روم',tests:['ipip','stroop','digits','trail','fatigue'],note:'تمرکز بر دقت، حافظه‌ی فعال و سرعت پردازش.'},
+ {name:'پایش دوره‌ای سلامت روان کارکنان',tests:['dass','burnout','fatigue'],note:'برای شاغلین و با رضایت و محرمانگی کامل.'},
+ {name:'پس از حادثه یا شبه‌حادثه',tests:['safety','fatigue','reaction','dass'],note:'برای شناخت عوامل انسانی و نیاز آموزشی، نه سرزنش.'}
+];
+
+/* نمره‌گذاری پرسشنامه‌ها */
+function scoreQuestionnaire(q,answers){
+  const {min,max}=q.scale,mult=q.mult||1;const raw={};
+  q.items.forEach((it,i)=>{const d=it[1],r=it[2];let v=answers[i];if(r)v=min+max-v;raw[d]=(raw[d]||0)+v});
+  const dims=[];const scMap={};
+  Object.keys(q.dims).forEach(k=>{
+    const n=q.items.filter(it=>it[1]===k).length,lo=n*min*mult,hi=n*max*mult,val=(raw[k]||0)*mult;
+    const b=band(q.dims[k].bands,val);scMap[k]={value:val};
+    dims.push({name:q.dims[k].name,display:val+' / '+hi,pct:hi>lo?(val-lo)/(hi-lo):0,label:b.label,tone:b.tone,text:b.text});
+  });
+  const flags=q.flags?q.flags(answers,scMap):[];
+  return{dims,flags};
+}
+function tonePct(tone){return {good:'t-good',mid:'t-mid',warn:'t-warn',bad:'t-bad',info:''}[tone]||''}
+
+/* ====== مسیریابی ====== */
+const view=$('#view');let currentView='home',cleanupTask=null;
+const state={sel:null,personFilter:'',kindFilter:'',run:null};
+function go(v){if(cleanupTask){cleanupTask();cleanupTask=null}currentView=v;
+  document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-current',b.dataset.v===v?'page':'false'));
+  ({home:vHome,people:vPeople,run:vRun,results:vResults,help:vHelp,settings:vSettings})[v]();window.scrollTo(0,0)}
+$('#tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)go(b.dataset.v)});
+$('#themeBtn').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme:dark)').matches);r.dataset.theme=dark?'light':'dark'};
+function openSheet(html){$('#sheet').innerHTML=html;$('#ov').classList.add('open')}
+function closeSheet(){$('#ov').classList.remove('open');$('#sheet').innerHTML=''}
+$('#ov').addEventListener('click',e=>{if(e.target.id==='ov')closeSheet()});
+
+/* ====== داشبورد ====== */
+function vHome(){
+  const ppl=DB.people,res=ppl.flatMap(p=>p.results.map(r=>({...r,p})));
+  const alerts=res.filter(r=>r.flags&&r.flags.some(f=>f.tone==='bad')).sort((a,b)=>b.date-a.date);
+  const recent=res.slice().sort((a,b)=>b.date-a.date).slice(0,6);
+  view.innerHTML=`
+  <h1>خوش آمدید</h1><p class="muted">مجموعه‌ی آزمون‌های روان‌شناختی برای استخدام و پایش کارکنان صنعتی. داده‌ها فقط روی همین رایانه (مرورگر) ذخیره می‌شود.</p>
+  <div class="notice info"><b>نکته‌ی مهم</b>نتایج این برنامه «غربالگری و کمک‌تصمیم» است، نه تشخیص بالینی و نه تنها مبنای رد یا اخراج. تفسیر نهایی باید توسط روان‌شناس یا کارشناس مجاز و همراه با مصاحبه و سوابق انجام شود. پیش از آزمون، رضایت و محرمانگی را برای فرد توضیح دهید.</div>
+  <div class="grid">
+    <div class="card stat"><span class="muted">افراد ثبت‌شده</span><b>${fa(ppl.length)}</b></div>
+    <div class="card stat"><span class="muted">آزمون‌های انجام‌شده</span><b>${fa(res.length)}</b></div>
+    <div class="card stat"><span class="muted">هشدارهای جدی</span><b style="color:${alerts.length?'var(--bad)':'inherit'}">${fa(alerts.length)}</b></div>
+    <div class="card stat"><span class="muted">تعداد آزمون‌های موجود</span><b>${fa(ALL.length)}</b></div>
+  </div>
+  ${alerts.length?`<div class="card"><h2>هشدارهای نیازمند پیگیری</h2>${alerts.slice(0,5).map(r=>`<div class="notice bad"><b>${esc(r.p.name)} — ${esc(byId(r.testId).short)} (${jdate(r.date)})</b>${esc(r.flags.find(f=>f.tone==='bad').text)} <button class="btn sm" data-open="${r.p.id}">باز کردن نتایج</button></div>`).join('')}</div>`:''}
+  <div class="card"><h2>شروع سریع</h2><div class="row"><button class="btn primary" data-go="people">+ ثبت فرد جدید</button><button class="btn" data-go="run">اجرای آزمون</button><button class="btn" data-go="help">راهنمای آزمون‌ها</button></div></div>
+  <div class="card"><h2>آخرین آزمون‌ها</h2>${recent.length?`<div class="tblwrap"><table><tr><th>نام</th><th>آزمون</th><th>تاریخ</th></tr>${recent.map(r=>`<tr><td>${esc(r.p.name)}</td><td>${esc(byId(r.testId).title)}</td><td>${jdt(r.date)}</td></tr>`).join('')}</table></div>`:'<p class="muted">هنوز آزمونی انجام نشده است. ابتدا یک فرد ثبت کنید.</p>'}</div>`;
+  view.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
+  view.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{state.sel=b.dataset.open;go('results')});
+}
+
+/* ====== پرسنل ====== */
+function vPeople(){
+  const f=state.personFilter.trim(),k=state.kindFilter;
+  const list=DB.people.filter(p=>(!k||p.kind===k)&&(!f||(p.name+' '+p.code+' '+p.dept+' '+p.job).includes(f)));
+  view.innerHTML=`
+  <h1>پرسنل و داوطلبان</h1>
+  <div class="card"><h2>ثبت فرد جدید</h2>
+   <form id="pf" class="form">
+    <div><label for="pn">نام و نام خانوادگی *</label><input id="pn" required></div>
+    <div><label for="pc">کد پرسنلی / کد ملی (اختیاری)</label><input id="pc" inputmode="numeric"></div>
+    <div><label for="pk">وضعیت</label><select id="pk"><option value="candidate">داوطلب استخدام</option><option value="employee">شاغل (پرسنل)</option></select></div>
+    <div><label for="pd">واحد / دپارتمان</label><input id="pd"></div>
+    <div><label for="pj">پست / شغل موردنظر</label><input id="pj"></div>
+    <div><label for="pa">سن</label><input id="pa" type="number" min="16" max="80"></div>
+    <div style="grid-column:1/-1"><label class="row" style="gap:8px"><input id="pcons" type="checkbox" style="width:auto"> رضایت آگاهانه گرفته شد (فرد از هدف آزمون و محرمانگی نتایج آگاه است)</label></div>
+    <div><button class="btn primary" type="submit">ذخیره</button></div>
+   </form></div>
+  <div class="card"><div class="row" style="margin-bottom:10px"><h2 style="margin:0">فهرست (${fa(list.length)})</h2><div class="spacer"></div>
+   <input id="pfind" placeholder="جستجو (نام، کد، واحد)" value="${esc(state.personFilter)}" style="max-width:220px"><select id="pkind" style="max-width:170px"><option value="">همه</option><option value="candidate" ${k==='candidate'?'selected':''}>داوطلبان</option><option value="employee" ${k==='employee'?'selected':''}>شاغلین</option></select></div>
+   ${list.length?`<div class="tblwrap"><table><tr><th>نام</th><th>وضعیت</th><th>واحد / پست</th><th>آزمون‌ها</th><th></th></tr>${list.map(p=>`<tr><td><b>${esc(p.name)}</b><br><span class="small muted">${esc(p.code||'')}</span></td><td><span class="badge ${p.kind==='candidate'?'b-info':''}">${KIND[p.kind]}</span></td><td>${esc(p.dept||'-')}<br><span class="small muted">${esc(p.job||'')}</span></td><td>${fa(p.results.length)}</td><td><div class="row" style="gap:4px"><button class="btn sm" data-t="${p.id}">آزمون</button><button class="btn sm" data-r="${p.id}">نتایج</button><button class="btn sm danger" data-d="${p.id}">حذف</button></div></td></tr>`).join('')}</table></div>`:'<p class="muted">فردی یافت نشد.</p>'}</div>`;
+  $('#pf').onsubmit=e=>{e.preventDefault();
+    if(!$('#pcons').checked){toast('ابتدا رضایت آگاهانه‌ی فرد را تأیید کنید');return}
+    DB.people.unshift({id:uid(),name:$('#pn').value.trim(),code:$('#pc').value.trim(),kind:$('#pk').value,dept:$('#pd').value.trim(),job:$('#pj').value.trim(),age:$('#pa').value,created:Date.now(),results:[]});
+    saveDB();toast('ذخیره شد');vPeople()};
+  $('#pfind').oninput=e=>{state.personFilter=e.target.value;const pos=e.target.selectionStart;vPeople();const i=$('#pfind');i.focus();i.setSelectionRange(pos,pos)};
+  $('#pkind').onchange=e=>{state.kindFilter=e.target.value;vPeople()};
+  view.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{state.sel=b.dataset.t;go('run')});
+  view.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{state.sel=b.dataset.r;go('results')});
+  view.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{
+    const p=DB.people.find(x=>x.id===b.dataset.d);
+    openSheet(`<h2>حذف ${esc(p.name)}</h2><p>تمام نتایج این فرد حذف می‌شود و قابل بازگشت نیست.</p><div class="row"><button class="btn danger" id="yes">حذف شود</button><button class="btn" id="no">انصراف</button></div>`);
+    $('#yes').onclick=()=>{DB.people=DB.people.filter(x=>x.id!==p.id);saveDB();closeSheet();vPeople()};$('#no').onclick=closeSheet});
+}
+/* ====== اجرای آزمون ====== */
+function vRun(){
+  if(state.run){renderRun();return}
+  if(!DB.people.length){view.innerHTML='<h1>اجرای آزمون</h1><div class="card"><p>ابتدا باید فردی ثبت شود.</p><button class="btn primary" id="gp">ثبت فرد جدید</button></div>';$('#gp').onclick=()=>go('people');return}
+  if(!state.sel||!DB.people.find(p=>p.id===state.sel))state.sel=DB.people[0].id;
+  view.innerHTML=`<h1>اجرای آزمون</h1>
+  <div class="card"><h2>۱) فرد</h2><select id="rp">${DB.people.map(p=>`<option value="${p.id}" ${p.id===state.sel?'selected':''}>${esc(p.name)} — ${KIND[p.kind]}${p.job?' — '+esc(p.job):''}</option>`).join('')}</select></div>
+  <div class="card"><h2>۲) آزمون‌ها</h2>
+   <p class="muted small">یک بسته‌ی پیشنهادی را انتخاب کنید یا آزمون‌ها را دستی علامت بزنید.</p>
+   <div class="row" style="margin-bottom:12px">${BATTERIES.map((b,i)=>`<button class="btn sm" data-b="${i}" title="${esc(b.note)}">${esc(b.name)}</button>`).join('')}</div>
+   <div class="grid">${ALL.map(t=>`<label class="card" style="margin:0;cursor:pointer;display:flex;gap:10px;align-items:flex-start"><input type="checkbox" class="tk" value="${t.id}" style="width:auto;margin-top:6px"><span><b>${esc(t.title)}</b><br><span class="small muted">${t.type==='q'?'پرسشنامه':'آزمون عملکردی'} · حدود ${fa(t.minutes)} دقیقه</span></span></label>`).join('')}</div>
+   <p class="small muted" id="tot" style="margin-top:10px"></p></div>
+  <div class="card"><h2>۳) آماده‌سازی</h2><ul class="small"><li>محیط ساکت، بدون حضور همکاران؛ گوشی‌ها خاموش.</li><li>برای آزمون‌های عملکردی از همان دستگاه و ترجیحاً در صبح (پیش از خستگی) استفاده کنید.</li><li>به فرد بگویید پاسخ درست یا غلط نیست و نتیجه محرمانه است.</li></ul>
+   <button class="btn primary" id="start">شروع آزمون‌ها</button></div>`;
+  const upd=()=>{const ids=[...view.querySelectorAll('.tk:checked')].map(x=>x.value);const m=ids.reduce((s,id)=>s+byId(id).minutes,0);$('#tot').textContent=ids.length?fa(ids.length)+' آزمون انتخاب شد — زمان تقریبی: '+fa(m)+' دقیقه':'هیچ آزمونی انتخاب نشده است.'};
+  view.querySelectorAll('.tk').forEach(c=>c.onchange=upd);upd();
+  $('#rp').onchange=e=>state.sel=e.target.value;
+  view.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{const t=BATTERIES[b.dataset.b].tests;view.querySelectorAll('.tk').forEach(c=>c.checked=t.includes(c.value));upd();toast(BATTERIES[b.dataset.b].note)});
+  $('#start').onclick=()=>{const ids=ALL.map(t=>t.id).filter(id=>view.querySelector('.tk[value="'+id+'"]').checked);
+    if(!ids.length){toast('حداقل یک آزمون را انتخاب کنید');return}
+    state.run={pid:$('#rp').value,queue:ids,i:0};renderRun()};
+}
+function renderRun(){
+  const r=state.run,t=byId(r.queue[r.i]),p=DB.people.find(x=>x.id===r.pid);
+  view.innerHTML=`<div class="row" style="margin-bottom:10px"><span class="badge b-info">${esc(p.name)}</span><span class="badge">آزمون ${fa(r.i+1)} از ${fa(r.queue.length)}</span><div class="spacer"></div><button class="btn sm danger" id="abort">توقف و خروج</button></div>
+  <div class="card"><h2>${esc(t.title)}</h2><div id="rbox"><p>${esc(t.intro)}</p><p class="small muted">زمان تقریبی: ${fa(t.minutes)} دقیقه</p><button class="btn primary" id="go">شروع</button></div></div>`;
+  $('#abort').onclick=()=>{if(cleanupTask){cleanupTask();cleanupTask=null}state.run=null;go('run')};
+  $('#go').onclick=()=>{
+    const box=$('#rbox');
+    if(t.type==='q')cleanupTask=runQ(box,t,ans=>finishTest(t,ans,{answers:ans,...scoreQuestionnaire(t,ans)}));
+    else cleanupTask=t.run(box,raw=>finishTest(t,raw,{raw,...t.interpret(raw)}));
+  };
+}
+function finishTest(t,payload,out){
+  if(cleanupTask){cleanupTask();cleanupTask=null}
+  const r=state.run,p=DB.people.find(x=>x.id===r.pid);
+  p.results.unshift({id:uid(),testId:t.id,date:Date.now(),data:out.answers||out.raw,dims:out.dims,flags:out.flags||[]});
+  saveDB();r.i++;
+  if(r.i<r.queue.length){const box=$('#rbox');box.innerHTML='<p><b>ثبت شد.</b> آزمون بعدی: '+esc(byId(r.queue[r.i]).title)+'</p><button class="btn primary" id="nx">ادامه</button>';$('#nx').onclick=renderRun}
+  else{state.run=null;state.sel=p.id;toast('همه‌ی آزمون‌ها ثبت شد');go('results')}
+}
+function runQ(box,q,done){
+  const ans=[];let i=0;
+  const kd=e=>{const k=parseInt(e.key,10),o=box.querySelectorAll('.opt');if(k>=1&&k<=o.length)o[k-1].click()};
+  const stop=()=>document.removeEventListener('keydown',kd);
+  const draw=()=>{
+    if(i>=q.items.length){stop();done(ans);return}
+    box.innerHTML=`<div class="qprog"><span style="width:${i/q.items.length*100}%"></span></div>
+    ${i===0?'<p class="small muted">'+esc(q.intro)+'</p>':''}
+    <div class="small muted">گویه ${fa(i+1)} از ${fa(q.items.length)}</div><div class="qitem">${esc(q.items[i][0])}</div>
+    <div class="opts">${q.scale.labels.map((l,k)=>`<button class="opt ${ans[i]===q.scale.min+k?'on':''}" data-v="${q.scale.min+k}"><kbd>${fa(k+1)}</kbd>${esc(l)}</button>`).join('')}</div>
+    <div class="row" style="margin-top:14px"><button class="btn sm" id="bk" ${i?'':'disabled'}>قبلی</button><span class="small muted">می‌توانید از کلیدهای ۱ تا ${fa(q.scale.labels.length)} صفحه‌کلید هم استفاده کنید.</span></div>`;
+    box.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{ans[i]=+b.dataset.v;i++;draw()});
+    $('#bk',box).onclick=()=>{i--;draw()};
+  };
+  document.addEventListener('keydown',kd);draw();return stop;
+}
+
+/* ====== نتایج و گزارش ====== */
+const dimHTML=d=>`<div class="dim"><div class="head"><strong>${esc(d.name)}</strong><span class="num">${esc(d.display)}</span><span class="badge ${TONE_CLS[d.tone]||''}">${esc(d.label)}</span></div><div class="meter ${tonePct(d.tone)}"><span style="width:${Math.round(clamp01(d.pct)*100)}%"></span></div><div class="small muted">${esc(d.text)}</div></div>`;
+const flagHTML=f=>`<div class="notice ${f.tone==='bad'?'bad':'warn'}"><b>${f.tone==='bad'?'هشدار مهم':'توجه'}</b>${esc(f.text)}</div>`;
+function latestByTest(p){const m={};p.results.slice().sort((a,b)=>a.date-b.date).forEach(r=>m[r.testId]=r);return ALL.map(t=>m[t.id]).filter(Boolean)}
+function attention(p){const out=[];latestByTest(p).forEach(r=>{r.dims.forEach(d=>{if(d.tone==='warn'||d.tone==='bad')out.push({test:byId(r.testId).short,name:d.name,label:d.label,tone:d.tone})})});return out}
+function vResults(){
+  if(!DB.people.length){view.innerHTML='<h1>نتایج</h1><div class="card"><p>هنوز فردی ثبت نشده است.</p></div>';return}
+  if(!state.sel||!DB.people.find(p=>p.id===state.sel))state.sel=DB.people[0].id;
+  const p=DB.people.find(x=>x.id===state.sel),late=latestByTest(p),att=attention(p);
+  view.innerHTML=`<h1>نتایج و گزارش</h1>
+  <div class="card"><div class="row"><select id="rp" style="max-width:340px">${DB.people.map(x=>`<option value="${x.id}" ${x.id===p.id?'selected':''}>${esc(x.name)} (${fa(x.results.length)} آزمون)</option>`).join('')}</select><div class="spacer"></div>
+   <button class="btn" id="more">+ آزمون جدید</button><button class="btn primary" id="rep" ${late.length?'':'disabled'}>گزارش کامل / چاپ</button></div>
+   <p class="small muted" style="margin:10px 0 0">${KIND[p.kind]}${p.dept?' · واحد: '+esc(p.dept):''}${p.job?' · پست: '+esc(p.job):''}${p.age?' · سن: '+fa(p.age):''}</p></div>
+  ${late.length?`<div class="card"><h2>موارد نیازمند توجه</h2>${att.length?att.map(a=>`<span class="badge ${TONE_CLS[a.tone]}" style="margin:2px">${esc(a.test)} · ${esc(a.name)}: ${esc(a.label)}</span>`).join(' '):'<p class="muted">هیچ نمره‌ی هشداردهنده‌ای ثبت نشده است.</p>'}<p class="small muted" style="margin-top:10px">این فهرست فقط راهنمای مصاحبه و پیگیری است و تصمیم نهایی نیست.</p></div>`:'<div class="card"><p class="muted">برای این فرد هنوز آزمونی انجام نشده است.</p></div>'}
+  ${late.map(r=>{const t=byId(r.testId),prev=p.results.filter(x=>x.testId===r.testId&&x.id!==r.id).sort((a,b)=>b.date-a.date);
+    return`<div class="card"><div class="row" style="margin-bottom:6px"><h2 style="margin:0">${esc(t.title)}</h2><span class="badge">${jdt(r.date)}</span><div class="spacer"></div><button class="btn sm danger" data-del="${r.id}">حذف</button></div>
+    ${r.flags.map(flagHTML).join('')}${r.dims.map(dimHTML).join('')}
+    ${prev.length?`<details style="margin-top:10px"><summary>نتایج قبلی (${fa(prev.length)})</summary><div class="body"><div class="tblwrap"><table><tr><th>تاریخ</th>${prev[0].dims.map(d=>'<th>'+esc(d.name)+'</th>').join('')}</tr>${prev.map(x=>`<tr><td>${jdt(x.date)}</td>${x.dims.map(d=>'<td>'+esc(d.display)+' <span class="badge '+TONE_CLS[d.tone]+'">'+esc(d.label)+'</span></td>').join('')}</tr>`).join('')}</table></div></div></details>`:''}</div>`}).join('')}`;
+  $('#rp').onchange=e=>{state.sel=e.target.value;vResults()};
+  $('#more').onclick=()=>go('run');
+  $('#rep').onclick=()=>openSheet(reportHTML(p));
+  view.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{p.results=p.results.filter(x=>x.id!==b.dataset.del);saveDB();vResults()});
+}
+function reportHTML(p){
+  const late=latestByTest(p),att=attention(p);
+  return`<div class="row no-print" style="margin-bottom:12px"><button class="btn primary" id="pr">چاپ / ذخیره PDF</button><button class="btn" id="cl">بستن</button></div>
+  <div id="report"><div style="border-bottom:3px solid var(--accent);padding-bottom:8px;margin-bottom:14px"><h1 style="margin:0">گزارش ارزیابی روان‌شناختی شغلی</h1><div class="muted">${esc(DB.org||'')}${DB.org?' · ':''}تاریخ گزارش: ${jdate(Date.now())}</div></div>
+  <table style="min-width:0"><tr><th>نام</th><td>${esc(p.name)}</td><th>وضعیت</th><td>${KIND[p.kind]}</td></tr><tr><th>واحد</th><td>${esc(p.dept||'-')}</td><th>پست</th><td>${esc(p.job||'-')}</td></tr><tr><th>کد</th><td>${esc(p.code||'-')}</td><th>سن</th><td>${p.age?fa(p.age):'-'}</td></tr></table>
+  <h2 style="margin-top:16px">خلاصه</h2>${att.length?'<p>موارد نیازمند توجه: '+att.map(a=>esc(a.test)+' ← '+esc(a.name)+' ('+esc(a.label)+')').join('؛ ')+'.</p>':'<p>در آزمون‌های انجام‌شده نمره‌ی هشداردهنده‌ای دیده نشد.</p>'}
+  ${late.flatMap(r=>r.flags).map(flagHTML).join('')}
+  ${late.map(r=>`<div class="card" style="break-inside:avoid"><h3>${esc(byId(r.testId).title)} <span class="muted small">(${jdate(r.date)})</span></h3>${r.dims.map(dimHTML).join('')}</div>`).join('')}
+  <div class="notice info"><b>یادآوری</b>این گزارش حاصل ابزارهای غربالگری است و تشخیص بالینی نیست. نتیجه باید با مصاحبه، سوابق و مشاهده‌ی رفتار تفسیر شود و به‌تنهایی مبنای رد، اخراج یا تنبیه قرار نگیرد. محرمانه است.</div>
+  <table style="min-width:0;margin-top:22px"><tr><td style="height:70px">نظر و امضای ارزیاب: ${esc(DB.examiner||'')}</td><td>نظر و امضای روان‌شناس / پزشک طب کار</td></tr></table></div>`;
+}
+document.addEventListener('click',e=>{
+  if(e.target.id==='cl')closeSheet();
+  if(e.target.id==='pr'){document.body.classList.add('printing');setTimeout(()=>{window.print();document.body.classList.remove('printing')},50)}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
+/* ====== راهنما ====== */
+function bandsTable(t){
+  if(t.type==='q'){return '<div class="tblwrap"><table><tr><th>مقیاس</th><th>سطح (بازه‌ی نمره)</th><th>تفسیر</th></tr>'+Object.keys(t.dims).map(k=>{
+    const n=t.items.filter(i=>i[1]===k).length,mult=t.mult||1;let lo=n*t.scale.min*mult;
+    return t.dims[k].bands.map((b,i)=>{const from=lo,to=b.upTo>=FINAL?n*t.scale.max*mult:b.upTo;lo=to+1;
+      return'<tr>'+(i===0?'<td rowspan="'+t.dims[k].bands.length+'"><b>'+esc(t.dims[k].name)+'</b></td>':'')+'<td><span class="badge '+TONE_CLS[b.tone]+'">'+esc(b.label)+'</span> <span class="num small">'+from+'–'+to+'</span></td><td class="small">'+esc(b.text)+'</td></tr>'}).join('')}).join('')+'</table></div>'}
+  const N={reaction:[['میانگین واکنش','≤۲۵۰ عالی · ۲۵۱–۳۲۰ طبیعی · ۳۲۱–۴۰۰ کند · بیش از ۴۰۰ بسیار کند (میلی‌ثانیه)'],['نوسان','≤۴۰ پایدار · ≤۸۰ متوسط · بیشتر ناپایدار'],['پیش‌دستی','۰ طبیعی · ۱–۲ گاهی · ۳ و بیشتر زیاد']],
+   stroop:[['اثر تداخل','≤۱۵۰ خوب · ≤۲۵۰ متوسط · بیشتر بالا (میلی‌ثانیه)'],['دقت ناهمخوان','≥۹۴٪ بالا · ≥۸۵٪ متوسط · کمتر پایین']],
+   digits:[['مستقیم','≤۴ پایین · ۵–۶ متوسط · ≥۷ خوب'],['معکوس','≤۳ پایین · ۴ متوسط · ≥۵ خوب']],
+   trail:[['بخش الف','≤۳۰ ثانیه سریع · ≤۵۰ متوسط · بیشتر کند'],['بخش ب','≤۷۵ ثانیه سریع · ≤۱۲۰ متوسط · بیشتر کند'],['خطا','≤۲ کم · ≤۵ متوسط · بیشتر زیاد']]}[t.id];
+  return'<div class="tblwrap"><table><tr><th>شاخص</th><th>مرزها (تقریبی)</th></tr>'+N.map(r=>'<tr><td>'+r[0]+'</td><td class="small">'+r[1]+'</td></tr>').join('')+'</table></div><p class="small muted">مرزها تقریبی و بر پایه‌ی یافته‌های رایج است و برای نمونه‌ی ایرانی/کارخانه‌ی شما هنجاریابی نشده است. پس از ثبت نتایج چند ده نفر از کارکنان خودتان، میانگین واحد را مبنای مقایسه قرار دهید.</p>';
+}
+const ul=a=>'<ul>'+a.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>';
+function vHelp(){
+  view.innerHTML=`<h1>راهنما و تفسیر</h1><p class="muted">نحوه‌ی اجرا، نمره‌گذاری و تفسیر هر آزمون، همراه با اصول اخلاقی و کاربرد در محیط صنعتی.</p>
+  <details open><summary>۱) روند کار پیشنهادی</summary><div class="body"><ol>
+   <li><b>ثبت فرد:</b> در «پرسنل و داوطلبان» فرد را ثبت و رضایت آگاهانه را علامت بزنید.</li>
+   <li><b>انتخاب بسته:</b> در «اجرای آزمون» بسته‌ی متناسب با شغل را برگزینید (جدول بخش ۴).</li>
+   <li><b>اجرا:</b> فرد روی همین رایانه آزمون‌ها را پشت‌سر هم انجام می‌دهد. نمره‌گذاری خودکار است.</li>
+   <li><b>تفسیر:</b> در «نتایج و گزارش» نتیجه را ببینید، موارد نیازمند توجه را در مصاحبه بررسی کنید.</li>
+   <li><b>گزارش:</b> گزارش کامل را چاپ یا PDF کنید و برای نظر روان‌شناس / پزشک طب کار ارائه دهید.</li>
+   <li><b>پشتیبان:</b> هر چند وقت یک‌بار از «تنظیمات» فایل پشتیبان بگیرید.</li></ol></div></details>
+
+  <details><summary>۲) اصول اخلاقی و حقوقی (پیش از هر آزمون بخوانید)</summary><div class="body">${ul([
+   'رضایت آگاهانه: هدف آزمون، نحوه‌ی استفاده از نتیجه، و اینکه چه کسی نتیجه را می‌بیند را به فرد بگویید.',
+   'محرمانگی: نتایج فقط در اختیار افراد مجاز (روان‌شناس، پزشک طب کار، مسئول منابع انسانی در حد لزوم) قرار گیرد؛ به سرپرست مستقیم نمره‌ی خام ندهید، فقط توصیه‌ی کاربردی بدهید.',
+   'کاربرد درست: نتایج برای «کمک به تصمیم» و «شناخت نیاز آموزشی و حمایتی» است، نه برچسب‌زدن، تنبیه یا اخراج.',
+   'تصمیم استخدام هرگز نباید فقط بر پایه‌ی یک آزمون باشد؛ مصاحبه‌ی ساختاریافته، سوابق و تست مهارت را هم لحاظ کنید.',
+   'پرسشنامه‌ی سلامت روان (DASS-21) برای غربالگری استخدام توصیه نمی‌شود؛ برای پایش و حمایت از شاغلین مناسب‌تر است.',
+   'اگر نشانه‌ی خطر جدی دیده شد (هشدار قرمز)، همان روز با فرد به‌صورت محرمانه و همدلانه گفت‌وگو و ارجاع تخصصی را هماهنگ کنید.',
+   'تشخیص بالینی و تفسیر تخصصی بر عهده‌ی روان‌شناس یا روان‌پزشک است؛ این برنامه جایگزین آنها نیست.',
+   'قوانین کار و قوانین حفاظت از اطلاعات شخصی را رعایت کنید؛ به‌ویژه برای ذخیره‌ی طولانی‌مدت اطلاعات داوطلبان رد شده.'])}</div></details>
+
+  <details><summary>۳) آزمون‌ها: نحوه‌ی اجرا و تفسیر</summary><div class="body">
+   ${ALL.map(t=>`<details><summary>${esc(t.title)} <span class="badge">${t.type==='q'?'پرسشنامه':'عملکردی'} · ${fa(t.minutes)} دقیقه</span></summary><div class="body">
+     <dl class="kv"><dt>چه چیزی می‌سنجد</dt><dd>${esc(t.guide.measures)}</dd><dt>نحوه‌ی اجرا</dt><dd>${ul(t.guide.admin)}</dd><dt>کاربرد مناسب</dt><dd>${ul(t.guide.use)}</dd><dt>محدودیت‌ها</dt><dd>${ul(t.guide.limits)}</dd></dl>
+     <h3>جدول تفسیر نمرات</h3>${bandsTable(t)}</div></details>`).join('')}</div></details>
+
+  <details><summary>۴) بسته‌های پیشنهادی بر اساس شغل</summary><div class="body"><div class="tblwrap"><table><tr><th>گروه شغلی</th><th>آزمون‌ها</th><th>توضیح</th></tr>${BATTERIES.map(b=>`<tr><td><b>${esc(b.name)}</b></td><td class="small">${b.tests.map(id=>esc(byId(id).short)).join('، ')}</td><td class="small">${esc(b.note)}</td></tr>`).join('')}</table></div><p class="small muted">بسته‌ها پیشنهادی‌اند؛ بر اساس شرح شغل و تحلیل خطرات پست، آنها را کم یا زیاد کنید. زمان کل یک بسته ۲۰ تا ۳۰ دقیقه است؛ بهتر است در دو نوبت اجرا شود تا خستگی نمره‌ها را مخدوش نکند.</p></div></details>
+
+  <details><summary>۵) تفسیر ترکیبی (الگوهای مهم)</summary><div class="body">${ul([
+   'وظیفه‌شناسی پایین + ریسک‌پذیری بالا + پایبندی ضعیف به مقررات: الگوی پرخطر برای مشاغل ایمنی‌محور (برق، ارتفاع، جرثقیل). مصاحبه‌ی رفتاری، آموزش و نظارت نزدیک یا انتخاب شغل کم‌خطرتر.',
+   'خستگی بالا + زمان واکنش کند یا نوسان زیاد: بررسی خواب و برنامه‌ی شیفت؛ در صورت چرت‌زدن حین کار یا رانندگی، ارجاع به پزشک طب کار و محدودیت موقت کار پرخطر.',
+   'استرس/اضطراب بالا (DASS) + ناپایداری هیجانی بالا: فشار روانی احتمالی؛ بازبینی بار کاری، مشاوره‌ی کارکنان و بررسی عوامل غیرکاری. نباید این الگو را تنها دلیل عدم استخدام دانست.',
+   'فرسودگی بالا + کارآمدی پایین: بیشتر نشانه‌ی عوامل سازمانی (بار کار، عدالت، قدردانی) است؛ نتایج واحد را گروهی مرور کنید.',
+   'مقیاس روایی «مشکوک»: نمرات خودگزارشی قابل اتکا نیست؛ آزمون را با توضیح مجدد و محیط آرام‌تر تکرار یا بر مصاحبه و سوابق تکیه کنید.',
+   'نمرات پایین در تمام آزمون‌های عملکردی: ابتدا شرایط (بی‌خوابی، دارو، ناآشنایی با رایانه، بینایی، کم‌سوادی، اضطراب آزمون) را بررسی و آزمون را در روز دیگر تکرار کنید.',
+   'در تعارض آزمون و مصاحبه: مصاحبه و مشاهده‌ی عملی را مقدم بدانید و علت اختلاف را جست‌وجو کنید.'])}</div></details>
+
+  <details><summary>۶) شرایط اجرا برای نتایج معتبر</summary><div class="body">${ul([
+   'اتاق ساکت، نور مناسب، بدون رفت‌وآمد؛ همان دستگاه برای همه‌ی افراد گروه.',
+   'برای آزمون‌های عملکردی ماوس یا صفحه‌ی لمسی ثابت؛ مانیتور با رنگ‌های استاندارد.',
+   'پرهیز از اجرا بلافاصله پس از شیفت شب، دعوای کاری، یا خبر ناراحت‌کننده.',
+   'فرد دارای عینک یا سمعک آن را همراه داشته باشد.',
+   'دوباره‌خوانی گویه‌ها برای افراد کم‌سواد با خواندن بدون القای پاسخ توسط ارزیاب ممکن است؛ این موضوع را در گزارش ثبت کنید.',
+   'برای مقایسه‌ی نتایج چند ماه بعد از همان شرایط تقریباً مشابه استفاده کنید.'])}</div></details>
+
+  <details><summary>۷) پرسش‌های متداول</summary><div class="body">
+   <p><b>آیا نمره‌ی پایین یعنی فرد مناسب نیست؟</b><br>خیر. نمره‌ها شاخص‌اند. تناسب فرد با شغل، آموزش و شرایط کار نیز مهم است.</p>
+   <p><b>داده‌ها کجا ذخیره می‌شود؟</b><br>در حافظه‌ی همین مرورگر روی همین رایانه (localStorage) و به اینترنت ارسال نمی‌شود. اگر داده‌های مرورگر را پاک کنید یا از مرورگر دیگر باز کنید، اطلاعات دیده نمی‌شود؛ پس پشتیبان بگیرید.</p>
+   <p><b>می‌توانم پرسشنامه‌ها را تغییر دهم؟</b><br>بله، متن و مرزها در بخش داده‌های فایل برنامه (آرایه‌ی QUESTIONNAIRES) قرار دارد و با ویرایشگر متن قابل ویرایش است.</p>
+   <p><b>این آزمون‌ها با آزمون‌های معتبر معروف (مانند MMPI یا NEO) چه تفاوتی دارند؟</b><br>آن آزمون‌ها حق‌نشر و صلاحیت تفسیر تخصصی دارند. این برنامه از ابزارهای آزاد و گویه‌های اصل استفاده می‌کند و برای غربالگری و بحث در مصاحبه مناسب است، نه جایگزین آنها.</p>
+  </div></details>`;
+}
+
+/* ====== تنظیمات ====== */
+function download(name,text,type){const b=new Blob([text],{type});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500)}
+function toCSV(){
+  const rows=[['نام','کد','وضعیت','واحد','پست','آزمون','تاریخ','شاخص','نمره','سطح']];
+  DB.people.forEach(p=>p.results.forEach(r=>r.dims.forEach(d=>rows.push([p.name,p.code,KIND[p.kind],p.dept,p.job,byId(r.testId).title,jdate(r.date),d.name,d.display,d.label]))));
+  return'﻿'+rows.map(r=>r.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
+}
+function vSettings(){
+  view.innerHTML=`<h1>تنظیمات و پشتیبان</h1>
+  <div class="card"><h2>اطلاعات گزارش</h2><div class="form"><div><label for="so">نام سازمان / کارخانه</label><input id="so" value="${esc(DB.org)}"></div><div><label for="se">نام ارزیاب / مسئول HSE</label><input id="se" value="${esc(DB.examiner)}"></div></div><p><button class="btn primary" id="ss">ذخیره</button></p></div>
+  <div class="card"><h2>پشتیبان‌گیری و خروجی</h2><p class="small muted">داده‌ها فقط در همین مرورگر ذخیره می‌شود. حداقل ماهی یک‌بار پشتیبان بگیرید و فایل را در محل امن نگه دارید (فایل شامل اطلاعات حساس است).</p>
+   <div class="row"><button class="btn primary" id="bk">دریافت پشتیبان (JSON)</button><button class="btn" id="cv">خروجی جدول (CSV برای Excel)</button><label class="btn" style="margin:0">بازیابی از پشتیبان<input type="file" id="rs" accept=".json,application/json" hidden></label></div></div>
+  <div class="card"><h2>پاک‌سازی</h2><p class="small muted">حذف همه‌ی افراد و نتایج. قابل بازگشت نیست مگر پشتیبان داشته باشید.</p><button class="btn danger" id="wipe">حذف همه‌ی داده‌ها</button></div>`;
+  $('#ss').onclick=()=>{DB.org=$('#so').value.trim();DB.examiner=$('#se').value.trim();saveDB();toast('ذخیره شد')};
+  $('#bk').onclick=()=>{download('psychotest-backup-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(DB),'application/json');toast('پشتیبان دریافت شد')};
+  $('#cv').onclick=()=>{download('psychotest-results.csv',toCSV(),'text/csv;charset=utf-8');};
+  $('#rs').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d||!Array.isArray(d.people))throw 0;
+      openSheet(`<h2>بازیابی پشتیبان</h2><p>${fa(d.people.length)} فرد در فایل است. داده‌های فعلی جایگزین شود یا با آنها ادغام شود؟</p><div class="row"><button class="btn primary" id="m1">جایگزین</button><button class="btn" id="m2">ادغام</button><button class="btn" id="m3">انصراف</button></div>`);
+      $('#m1').onclick=()=>{DB={org:d.org||'',examiner:d.examiner||'',people:d.people};saveDB();closeSheet();toast('بازیابی شد');vSettings()};
+      $('#m2').onclick=()=>{const have=new Set(DB.people.map(p=>p.id));d.people.forEach(p=>{if(!have.has(p.id))DB.people.push(p)});saveDB();closeSheet();toast('ادغام شد');vSettings()};
+      $('#m3').onclick=closeSheet}catch(err){toast('فایل پشتیبان معتبر نیست')}};rd.readAsText(f)};
+  $('#wipe').onclick=()=>{openSheet('<h2>حذف همه‌ی داده‌ها؟</h2><p>این کار برگشت‌پذیر نیست.</p><div class="row"><button class="btn danger" id="y">بله، حذف شود</button><button class="btn" id="n">انصراف</button></div>');
+    $('#y').onclick=()=>{DB={org:DB.org,examiner:DB.examiner,people:[]};saveDB();closeSheet();toast('حذف شد');vSettings()};$('#n').onclick=closeSheet};
+}
+go('home');
+</script></body></html>
