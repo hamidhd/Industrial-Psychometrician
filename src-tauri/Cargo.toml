@@ -1,6 +1,6 @@
 [package]
 name = "ravansanj-sanati"
-version = "2.0.0"
+version = "2.1.0"
 description = "سامانه چندرایانه‌ای آزمون‌های روان‌شناختی محیط کار"
 authors = ["Ravansanj Sanati"]
 edition = "2021"
