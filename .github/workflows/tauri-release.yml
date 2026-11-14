@@ -1,7 +1,11 @@
-name: Build Tauri Desktop Installers
+name: CI/CD — Build & Release Desktop Installers
 
 on:
   push:
+    branches:
+      - main
+      - master
+  pull_request:
     branches:
       - main
       - master
@@ -11,24 +15,72 @@ permissions:
   contents: write
 
 concurrency:
-  group: tauri-release-${{ github.ref }}
+  group: cicd-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  version:
-    name: Auto-Determine Version
+  ci:
+    name: Quality Check (TypeScript & Vite Build)
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[skip ci]') && github.actor != 'github-actions[bot]'"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: TypeScript typecheck
+        run: npm run lint
+
+      - name: Build production web bundle
+        run: npm run build
+
+  deploy-firebase:
+    name: Deploy Firestore Rules
+    needs: ci
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy Firestore rules (if FIREBASE_SERVICE_ACCOUNT is set)
+        env:
+          FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SA_JSON" ]; then
+            echo "FIREBASE_SERVICE_ACCOUNT secret not set; skipping automatic Firestore rules deploy."
+            exit 0
+          fi
+          SA_FILE="$(mktemp)"
+          printf '%s' "$FIREBASE_SA_JSON" > "$SA_FILE"
+          export GOOGLE_APPLICATION_CREDENTIALS="$SA_FILE"
+          npx --yes firebase-tools deploy --only firestore:rules --project gen-lang-client-0111060479
+          rm -f "$SA_FILE"
+
+  version:
+    name: Auto-Determine Version & Create Release
+    needs: ci
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     outputs:
       version: ${{ steps.bump.outputs.version }}
       tag: ${{ steps.bump.outputs.tag }}
       bump: ${{ steps.bump.outputs.bump }}
       reason: ${{ steps.bump.outputs.reason }}
+      pushed_tag: ${{ steps.push.outputs.pushed_tag }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -39,7 +91,21 @@ jobs:
         id: bump
         run: node scripts/auto-version.mjs
 
-      - name: Commit bumped version & push tag
+      - name: Save bumped manifests artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-manifests
+          path: |
+            package.json
+            src-tauri/tauri.conf.json
+            src-tauri/Cargo.toml
+            release-notes.md
+          retention-days: 1
+
+      - name: Commit bumped version, tag, and create GitHub Release
+        id: push
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -47,23 +113,22 @@ jobs:
           if ! git diff --cached --quiet; then
             git commit -m "chore(release): ${{ steps.bump.outputs.tag }} [skip ci]"
           fi
-          git tag -a "${{ steps.bump.outputs.tag }}" -m "Release ${{ steps.bump.outputs.tag }} — ${{ steps.bump.outputs.reason }}"
-          git push origin "HEAD:${{ github.ref_name }}" --tags
+          git tag -a "${{ steps.bump.outputs.tag }}" -m "Release ${{ steps.bump.outputs.tag }}"
 
-      - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release create "${{ steps.bump.outputs.tag }}" \
-            --title "روان‌سنج صنعتی ${{ steps.bump.outputs.tag }}" \
-            --notes "نسخه‌ی دسکتاپ (${{ steps.bump.outputs.tag }})
-          - نوع ارتقای خودکار نسخه: \`${{ steps.bump.outputs.bump }}\`
-          - علت: ${{ steps.bump.outputs.reason }}"
+          if git push origin "HEAD:${{ github.ref_name }}" --tags; then
+            echo "pushed_tag=true" >> "$GITHUB_OUTPUT"
+            gh release create "${{ steps.bump.outputs.tag }}" \
+              --title "روان‌سنج صنعتی ${{ steps.bump.outputs.tag }}" \
+              --notes-file release-notes.md || true
+          else
+            echo "::warning::Push to branch failed (check branch protection or workflow permissions). Building artifacts with version ${{ steps.bump.outputs.version }} anyway."
+            echo "pushed_tag=false" >> "$GITHUB_OUTPUT"
+          fi
 
   build-tauri:
     name: Build Installer (${{ matrix.platform }})
     needs: version
-    if: needs.version.outputs.tag != ''
+    if: github.event_name != 'pull_request' && needs.version.outputs.tag != ''
     strategy:
       fail-fast: false
       matrix:
@@ -77,9 +142,19 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout tagged release
+        if: needs.version.outputs.pushed_tag == 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.version.outputs.tag }}
+
+      - name: Checkout commit (fallback if tag push was blocked)
+        if: needs.version.outputs.pushed_tag != 'true'
+        uses: actions/checkout@v4
+
+      - name: Apply bumped version manifests
+        uses: actions/download-artifact@v4
+        with:
+          name: version-manifests
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -103,21 +178,20 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
 
-      - name: Build Tauri v2 desktop installer & publish to GitHub Release
+      - name: Build Tauri v2 desktop installer & attach to Release
+        if: needs.version.outputs.pushed_tag == 'true'
         uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ needs.version.outputs.tag }}
           releaseName: 'روان‌سنج صنعتی ${{ needs.version.outputs.tag }}'
-          releaseBody: |
-            نسخه‌ی دسکتاپ **روان‌سنج صنعتی** (${{ needs.version.outputs.tag }})
-            - **نوع ارتقای خودکار نسخه:** `${{ needs.version.outputs.bump }}`
-            - **علت انتخاب نسخه:** ${{ needs.version.outputs.reason }}
-
-            فایل‌های نصاب ویندوز (`.exe` / `.msi`)، لینوکس (`.deb` / `.AppImage`) و مک (`.dmg`) در بخش Assets زیر قابل دریافت هستند.
           releaseDraft: false
           prerelease: false
+
+      - name: Build Tauri v2 desktop bundle (fallback without GitHub Release upload)
+        if: needs.version.outputs.pushed_tag != 'true'
+        run: npx --yes @tauri-apps/cli@2 build
 
       - name: Upload installer artifacts to workflow run
         uses: actions/upload-artifact@v4

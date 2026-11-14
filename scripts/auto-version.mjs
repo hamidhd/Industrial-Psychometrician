@@ -28,11 +28,7 @@ function tagExists(tag) {
   return Boolean(tryRun(`git rev-parse -q --verify "refs/tags/${tag}"`));
 }
 
-const IGNORED_DIFF_PREFIXES = [
-  'src-tauri/icons/',
-  'dist/',
-  'node_modules/',
-];
+const IGNORED_DIFF_PREFIXES = ['src-tauri/icons/', 'dist/', 'node_modules/'];
 const IGNORED_DIFF_FILES = new Set([
   'package-lock.json',
   'bun.lock',
@@ -54,9 +50,10 @@ function main() {
   const cargoTomlPath = path.resolve('src-tauri/Cargo.toml');
 
   const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-  const latestTag = tryRun('git tag --list "v[0-9]*.[0-9]*.[0-9]*" --sort=-v:refname')
-    .split(/\r?\n/)
-    .filter(Boolean)[0] || '';
+  const latestTag =
+    tryRun('git tag --list "v[0-9]*.[0-9]*.[0-9]*" --sort=-v:refname')
+      .split(/\r?\n/)
+      .filter(Boolean)[0] || '';
 
   const commitCount = Number(tryRun('git rev-list --count HEAD') || '1');
   const baseVersion = latestTag
@@ -71,6 +68,7 @@ function main() {
   let addedFiles = 0;
   let linesChanged = 0;
   let nextVersion = [...baseVersion];
+  let commitLines = [];
 
   const baseRef = latestTag || (commitCount > 1 ? 'HEAD~1' : '');
 
@@ -97,6 +95,10 @@ function main() {
     }
 
     const commitMsgs = tryRun(`git log ${baseRef}..HEAD --format=%B`);
+    commitLines = tryRun(`git log ${baseRef}..HEAD --no-merges --format="- %s (%h)"`)
+      .split(/\r?\n/)
+      .filter((l) => l && !l.includes('[skip ci]'));
+
     const hasMajorMarker = /(BREAKING CHANGE|^[a-z]+!:|\[\s*major\s*\])/im.test(commitMsgs);
     const hasMinorMarker = /(^feat(\(.+\))?:|\[\s*minor\s*\])/im.test(commitMsgs);
 
@@ -117,9 +119,14 @@ function main() {
       nextVersion = [baseVersion[0], baseVersion[1], baseVersion[2] + 1];
       reason = `اصلاح یا تغییر جزئی (${filesChanged} فایل، ${linesChanged} خط تغییر)`;
     }
-  } else if (tagExists(`v${formatSemver(nextVersion)}`)) {
-    bumpType = 'patch';
-    nextVersion = [baseVersion[0], baseVersion[1], baseVersion[2] + 1];
+  } else {
+    commitLines = tryRun('git log -n 5 --no-merges --format="- %s (%h)"')
+      .split(/\r?\n/)
+      .filter(Boolean);
+    if (tagExists(`v${formatSemver(nextVersion)}`)) {
+      bumpType = 'patch';
+      nextVersion = [baseVersion[0], baseVersion[1], baseVersion[2] + 1];
+    }
   }
 
   while (tagExists(`v${formatSemver(nextVersion)}`)) {
@@ -145,6 +152,21 @@ function main() {
     `version = "${versionStr}"`
   );
   fs.writeFileSync(cargoTomlPath, cargoUpdated, 'utf8');
+
+  // 4. Write release notes markdown
+  const releaseNotes = [
+    `نسخه‌ی دسکتاپ **روان‌سنج صنعتی** (${tagStr})`,
+    '',
+    `- **نوع ارتقای خودکار نسخه:** \`${bumpType}\``,
+    `- **علت انتخاب نسخه:** ${reason}`,
+    `- **حجم تغییرات:** ${filesChanged} فایل · ${linesChanged} خط`,
+    '',
+    ...(commitLines.length > 0
+      ? ['### فهرست تغییرات', ...commitLines.slice(0, 25), '']
+      : []),
+    'فایل‌های نصاب ویندوز (`.exe` / `.msi`)، لینوکس (`.deb` / `.AppImage`) و مک (`.dmg`) در بخش **Assets** زیر قابل دریافت هستند.',
+  ].join('\n');
+  fs.writeFileSync(path.resolve('release-notes.md'), releaseNotes, 'utf8');
 
   console.log(`Version bump: ${formatSemver(baseVersion)} -> ${versionStr} (${bumpType})`);
   console.log(`Reason: ${reason}`);

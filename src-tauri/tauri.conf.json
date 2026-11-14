@@ -10,17 +10,6 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [
-      {
-        "label": "main",
-        "title": "روان‌سنج صنعتی — آزمون‌های روان‌شناختی محیط کار",
-        "width": 1280,
-        "height": 840,
-        "minWidth": 960,
-        "minHeight": 640,
-        "resizable": true
-      }
-    ],
     "security": {
       "csp": null
     }

@@ -3,5 +3,8 @@
   "identifier": "default",
   "description": "Capability for the main desktop window",
   "windows": ["main"],
+  "remote": {
+    "urls": ["http://localhost:*"]
+  },
   "permissions": ["core:default"]
 }
