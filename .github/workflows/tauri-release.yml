@@ -1,4 +1,4 @@
-name: CI/CD — Build & Release Desktop Installers
+name: CI/CD — Build & Release Windows Desktop Installer
 
 on:
   push:
@@ -126,20 +126,10 @@ jobs:
           fi
 
   build-tauri:
-    name: Build Installer (${{ matrix.platform }})
+    name: Build Windows Installer
     needs: version
     if: github.event_name != 'pull_request' && needs.version.outputs.tag != ''
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: windows-latest
-            label: windows
-          - platform: ubuntu-22.04
-            label: linux
-          - platform: macos-latest
-            label: macos
-    runs-on: ${{ matrix.platform }}
+    runs-on: windows-latest
     steps:
       - name: Checkout tagged release
         if: needs.version.outputs.pushed_tag == 'true'
@@ -161,12 +151,6 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install Linux Tauri dependencies
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-
       - name: Setup Rust stable toolchain
         uses: dtolnay/rust-toolchain@stable
 
@@ -178,7 +162,7 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
 
-      - name: Build Tauri v2 desktop installer & attach to Release
+      - name: Build Tauri v2 Windows desktop installer & attach to Release
         if: needs.version.outputs.pushed_tag == 'true'
         uses: tauri-apps/tauri-action@v0
         env:
@@ -189,18 +173,15 @@ jobs:
           releaseDraft: false
           prerelease: false
 
-      - name: Build Tauri v2 desktop bundle (fallback without GitHub Release upload)
+      - name: Build Tauri v2 Windows bundle (fallback without GitHub Release upload)
         if: needs.version.outputs.pushed_tag != 'true'
         run: npx --yes @tauri-apps/cli@2 build
 
-      - name: Upload installer artifacts to workflow run
+      - name: Upload Windows installer artifacts to workflow run
         uses: actions/upload-artifact@v4
         with:
-          name: ravansanj-sanati-${{ matrix.label }}-${{ needs.version.outputs.tag }}
+          name: ravansanj-sanati-windows-${{ needs.version.outputs.tag }}
           path: |
             src-tauri/target/release/bundle/**/*.exe
             src-tauri/target/release/bundle/**/*.msi
-            src-tauri/target/release/bundle/**/*.deb
-            src-tauri/target/release/bundle/**/*.AppImage
-            src-tauri/target/release/bundle/**/*.dmg
           if-no-files-found: warn
