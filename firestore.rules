@@ -127,7 +127,7 @@ service cloud.firestore {
 
     match /workspaces/{workspaceId} {
       allow get: if isVerified() && isValidId(workspaceId) && isWorkspaceMemberData(existing());
-      allow list: if isVerified() && (existing().ownerId == request.auth.uid || request.auth.token.email in existing().allowedEmails);
+      allow list: if isVerified();
       allow create: if isVerified()
         && isValidId(workspaceId)
         && isValidWorkspace(incoming())
@@ -150,7 +150,7 @@ service cloud.firestore {
 
       match /people/{personId} {
         allow get: if isVerified() && isValidId(workspaceId) && isValidId(personId) && isWorkspaceMember(workspaceId);
-        allow list: if isVerified() && (existing().ownerId == request.auth.uid || request.auth.token.email in existing().allowedEmails);
+        allow list: if isVerified();
         allow create: if isVerified()
           && isValidId(workspaceId)
           && isValidId(personId)
@@ -186,7 +186,7 @@ service cloud.firestore {
 
       match /results/{resultId} {
         allow get: if isVerified() && isValidId(workspaceId) && isValidId(resultId) && isWorkspaceMember(workspaceId);
-        allow list: if isVerified() && (existing().ownerId == request.auth.uid || request.auth.token.email in existing().allowedEmails);
+        allow list: if isVerified();
         allow create: if isVerified()
           && isValidId(workspaceId)
           && isValidId(resultId)

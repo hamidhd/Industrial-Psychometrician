@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { onAuthStateChanged, type User } from 'firebase/auth';
 import {
   BookOpen,
   ClipboardCheck,
@@ -18,27 +17,24 @@ import { PeopleView } from './components/PeopleView';
 import { ResultsView } from './components/ResultsView';
 import { RunTestView } from './components/RunTestView';
 import { SettingsView } from './components/SettingsView';
-import { auth, signOutUser } from './firebase';
 import {
   createWorkspace,
   subscribePeople,
   subscribeResults,
   subscribeWorkspaces,
 } from './services/firestoreService';
-import type { Person, TestResult, ViewName, Workspace } from './types/psychometrics';
-
-const NAV_ITEMS: Array<{ id: ViewName; label: string; Icon: React.ComponentType<{ className?: string }> }> = [
-  { id: 'home', label: 'داشبورد', Icon: LayoutDashboard },
-  { id: 'people', label: 'پرسنل و داوطلبان', Icon: Users },
-  { id: 'run', label: 'اجرای آزمون', Icon: ClipboardCheck },
-  { id: 'results', label: 'نتایج و گزارش', Icon: FileBarChart2 },
-  { id: 'help', label: 'راهنما و تفسیر', Icon: BookOpen },
-  { id: 'settings', label: 'تنظیمات و اشتراک‌گذاری', Icon: Settings },
-];
+import type { AppUser, Person, TestResult, ViewName, Workspace } from './types/psychometrics';
 
 export default function App() {
-  const [authReady, setAuthReady] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(() => {
+    try {
+      const raw = localStorage.getItem('rsi_logged_session');
+      if (raw) return JSON.parse(raw);
+    } catch {
+      // ignore
+    }
+    return null;
+  });
 
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [wsLoaded, setWsLoaded] = useState(false);
@@ -50,7 +46,7 @@ export default function App() {
   const [results, setResults] = useState<TestResult[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
 
-  const [view, setView] = useState<ViewName>('home');
+  const [view, setView] = useState<ViewName>(() => (currentUser?.hasResultAccess ? 'home' : 'run'));
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
 
   const [computerLabel, setComputerLabel] = useState<string>(
@@ -79,6 +75,21 @@ export default function App() {
     localStorage.setItem('rsi_theme', dark ? 'dark' : 'light');
   }, [dark]);
 
+  const handleLoginSuccess = (usr: AppUser) => {
+    setCurrentUser(usr);
+    localStorage.setItem('rsi_logged_session', JSON.stringify(usr));
+    if (!usr.hasResultAccess) {
+      setView('run');
+    } else {
+      setView('home');
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('rsi_logged_session');
+  };
+
   const handleComputerLabelChange = (label: string) => {
     setComputerLabel(label);
     localStorage.setItem('rsi_computer_label', label);
@@ -90,51 +101,41 @@ export default function App() {
     setSelectedPersonId(null);
   };
 
+  // Subscribe to workspaces
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setAuthReady(true);
-      if (!u) {
-        setWorkspaces([]);
-        setWsLoaded(false);
-        setPeople([]);
-        setResults([]);
-        creatingDefaultRef.current = false;
-      }
-    });
-    return unsub;
-  }, []);
-
-  // Subscribe to workspaces accessible by this user
-  useEffect(() => {
-    if (!authReady || !user || !user.emailVerified || !user.email) return;
+    if (!currentUser) return;
     setWsLoaded(false);
+    const email = currentUser.role === 'admin' ? 'admin@ravansanj.local' : 'user@ravansanj.local';
     const unsub = subscribeWorkspaces(
-      user.email,
+      email,
       (list) => {
         setWorkspaces(list);
         setWsLoaded(true);
         if (list.length === 0 && !creatingDefaultRef.current) {
           creatingDefaultRef.current = true;
-          void createWorkspace(user, 'سازمان / کارخانه من', user.displayName || '').then((id) => {
+          // Create default workspace using mock user object
+          void createWorkspace(
+            { uid: currentUser.id, email } as any,
+            'مجتمع صنعتی — واحد ارزیابی',
+            currentUser.name
+          ).then((id) => {
             handleSelectWorkspace(id);
           });
         }
       },
       () => {
         setWsLoaded(true);
-        showToast('خطا در دریافت پایگاه‌های داده');
       }
     );
     return unsub;
-  }, [authReady, user, showToast]);
+  }, [currentUser]);
 
   const activeWorkspace =
     workspaces.find((w) => w.id === activeWsId) || workspaces[0] || null;
 
-  // Subscribe to people and results of active workspace
+  // Subscribe to people and results
   useEffect(() => {
-    if (!user?.email || !user.emailVerified || !activeWorkspace) {
+    if (!currentUser || !activeWorkspace) {
       setPeople([]);
       setResults([]);
       return;
@@ -146,9 +147,10 @@ export default function App() {
       if (pDone && rDone) setDataLoading(false);
     };
 
+    const email = currentUser.role === 'admin' ? 'admin@ravansanj.local' : 'user@ravansanj.local';
     const unsubPeople = subscribePeople(
       activeWorkspace.id,
-      user.email,
+      email,
       (list) => {
         setPeople(list);
         pDone = true;
@@ -162,7 +164,7 @@ export default function App() {
 
     const unsubResults = subscribeResults(
       activeWorkspace.id,
-      user.email,
+      email,
       (list) => {
         setResults(list);
         rDone = true;
@@ -178,22 +180,10 @@ export default function App() {
       unsubPeople();
       unsubResults();
     };
-  }, [activeWorkspace?.id, user?.email, user?.emailVerified]);
+  }, [activeWorkspace?.id, currentUser]);
 
-  if (!authReady) {
-    return (
-      <div className="min-h-screen grid place-items-center text-sm text-[#5a6a78] dark:text-[#9aabb8]">
-        در حال بارگذاری…
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <AuthGate />;
-  }
-
-  if (!user.emailVerified) {
-    return <AuthGate unverifiedEmail={user.email} onSignOut={() => void signOutUser()} />;
+  if (!currentUser) {
+    return <AuthGate onLoginSuccess={handleLoginSuccess} onToast={showToast} />;
   }
 
   if (!wsLoaded || !activeWorkspace) {
@@ -209,6 +199,21 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   };
 
+  const navItems = currentUser.hasResultAccess
+    ? [
+        { id: 'home' as ViewName, label: 'داشبورد', Icon: LayoutDashboard },
+        { id: 'people' as ViewName, label: 'پرسنل و داوطلبان', Icon: Users },
+        { id: 'run' as ViewName, label: 'اجرای آزمون', Icon: ClipboardCheck },
+        { id: 'results' as ViewName, label: 'نتایج و گزارش', Icon: FileBarChart2 },
+        { id: 'help' as ViewName, label: 'راهنما و تفسیر', Icon: BookOpen },
+        { id: 'settings' as ViewName, label: 'تنظیمات و کاربران', Icon: Settings },
+      ]
+    : [
+        { id: 'run' as ViewName, label: 'تکمیل آزمون', Icon: ClipboardCheck },
+        { id: 'results' as ViewName, label: 'سوابق من', Icon: FileBarChart2 },
+        { id: 'help' as ViewName, label: 'راهنما', Icon: BookOpen },
+      ];
+
   return (
     <div className="min-h-screen flex flex-col bg-[#edf0f2] dark:bg-[#12181e]">
       {/* Top Bar */}
@@ -222,7 +227,7 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2.5 min-w-0">
-            {workspaces.length > 1 && (
+            {currentUser.hasResultAccess && workspaces.length > 1 && (
               <select
                 aria-label="پایگاه داده فعال"
                 value={activeWorkspace.id}
@@ -237,8 +242,8 @@ export default function App() {
               </select>
             )}
 
-            <span className="hidden sm:inline text-xs text-[#5a6a78] dark:text-[#9aabb8] whitespace-nowrap truncate max-w-[200px]">
-              {activeWorkspace.org || 'پایگاه داده مشترک'} · {computerLabel}
+            <span className="hidden sm:inline text-xs text-[#5a6a78] dark:text-[#9aabb8] whitespace-nowrap truncate max-w-[220px]">
+              {currentUser.name} ({currentUser.role === 'admin' ? 'مدیر سیستم' : currentUser.role === 'evaluator' ? 'ارزیاب' : 'پرسنل'}) · {computerLabel}
             </span>
 
             <button
@@ -252,8 +257,8 @@ export default function App() {
 
             <button
               type="button"
-              onClick={() => void signOutUser()}
-              title={`خروج (${user.email || ''})`}
+              onClick={handleLogout}
+              title="خروج"
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#d5dce1] dark:border-[#33414d] hover:border-[#b83232] text-xs font-medium cursor-pointer whitespace-nowrap shrink-0"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -264,7 +269,7 @@ export default function App() {
 
         {/* Mobile Nav */}
         <nav className="no-print lg:hidden border-t border-[#d5dce1] dark:border-[#33414d] px-2 py-1.5 flex gap-1 overflow-x-auto">
-          {NAV_ITEMS.map(({ id, label }) => (
+          {navItems.map(({ id, label }) => (
             <button
               key={id}
               type="button"
@@ -286,7 +291,7 @@ export default function App() {
         {/* Desktop Sidebar */}
         <aside className="no-print hidden lg:flex flex-col w-60 shrink-0">
           <nav className="sticky top-20 space-y-1">
-            {NAV_ITEMS.map(({ id, label, Icon }) => {
+            {navItems.map(({ id, label, Icon }) => {
               const active = view === id;
               return (
                 <button
@@ -307,9 +312,11 @@ export default function App() {
 
             <div className="pt-4 mt-4 border-t border-[#d5dce1] dark:border-[#33414d] px-2 text-xs text-[#5a6a78] dark:text-[#9aabb8] space-y-1">
               <div className="truncate font-medium text-[#1b2733] dark:text-[#e6ecf0]">
-                {user.displayName || 'کارشناس ارزیابی'}
+                {currentUser.name}
               </div>
-              <div className="num-ltr truncate text-[11px]">{user.email}</div>
+              <div className="num-ltr truncate text-[11px]">
+                {currentUser.role === 'admin' ? 'مدیر ارشد' : currentUser.role === 'evaluator' ? 'ارزیاب / طب کار' : 'پرسنل گرامی'}
+              </div>
             </div>
           </nav>
         </aside>
@@ -322,7 +329,7 @@ export default function App() {
             </div>
           ) : (
             <>
-              {view === 'home' && (
+              {view === 'home' && currentUser.hasResultAccess && (
                 <DashboardView
                   people={people}
                   results={results}
@@ -335,9 +342,9 @@ export default function App() {
                 />
               )}
 
-              {view === 'people' && (
+              {view === 'people' && currentUser.hasResultAccess && (
                 <PeopleView
-                  user={user}
+                  user={{ uid: currentUser.id, email: 'admin@ravansanj.local' } as any}
                   workspace={activeWorkspace}
                   people={people}
                   results={results}
@@ -355,11 +362,18 @@ export default function App() {
 
               {view === 'run' && (
                 <RunTestView
-                  user={user}
+                  user={{ uid: currentUser.id, email: 'user@ravansanj.local' } as any}
                   workspace={activeWorkspace}
                   computerLabel={computerLabel}
                   people={people}
-                  selectedPersonId={selectedPersonId}
+                  selectedPersonId={
+                    selectedPersonId ||
+                    (currentUser.hasResultAccess
+                      ? null
+                      : people.find((p) => p.code === currentUser.nationalCode || p.code === currentUser.personnelId)?.id ||
+                        people[0]?.id ||
+                        null)
+                  }
                   onSelectPerson={setSelectedPersonId}
                   onGoPeople={() => navigate('people')}
                   onFinishAll={(pid) => {
@@ -373,9 +387,28 @@ export default function App() {
               {view === 'results' && (
                 <ResultsView
                   workspace={activeWorkspace}
-                  people={people}
+                  people={
+                    currentUser.hasResultAccess
+                      ? people
+                      : people.filter(
+                          (p) =>
+                            p.code === currentUser.nationalCode ||
+                            p.code === currentUser.personnelId ||
+                            p.name === currentUser.name
+                        )
+                  }
                   results={results}
-                  selectedPersonId={selectedPersonId}
+                  selectedPersonId={
+                    selectedPersonId ||
+                    (currentUser.hasResultAccess
+                      ? null
+                      : people.find(
+                          (p) =>
+                            p.code === currentUser.nationalCode ||
+                            p.code === currentUser.personnelId ||
+                            p.name === currentUser.name
+                        )?.id || null)
+                  }
                   onSelectPerson={setSelectedPersonId}
                   onRunNewTest={() => navigate('run')}
                   onToast={showToast}
@@ -384,9 +417,9 @@ export default function App() {
 
               {view === 'help' && <HelpView />}
 
-              {view === 'settings' && (
+              {view === 'settings' && currentUser.hasResultAccess && (
                 <SettingsView
-                  user={user}
+                  user={{ uid: currentUser.id, email: 'admin@ravansanj.local' } as any}
                   workspaces={workspaces}
                   activeWorkspace={activeWorkspace}
                   onSelectWorkspace={handleSelectWorkspace}

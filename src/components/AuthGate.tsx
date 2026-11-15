@@ -1,32 +1,245 @@
 import React, { useState } from 'react';
-import { MonitorCheck, ShieldCheck } from 'lucide-react';
+import { KeyRound, ShieldCheck, UserCheck, Users } from 'lucide-react';
+import { INITIAL_MASTER_PERSONNEL } from '../data/initialPersonnel';
 import { signInWithGoogle } from '../firebase';
+import type { AppUser } from '../types/psychometrics';
 
 interface Props {
-  unverifiedEmail?: string | null;
-  onSignOut?: () => void;
+  onLoginSuccess: (user: AppUser) => void;
+  onToast: (msg: string) => void;
 }
 
-export const AuthGate: React.FC<Props> = ({ unverifiedEmail, onSignOut }) => {
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
+  const [tab, setTab] = useState<'personnel' | 'admin' | 'google'>('personnel');
 
-  const handleLogin = async () => {
-    setBusy(true);
-    setErr(null);
+  // Personnel login state (National Code or Personnel ID)
+  const [identifier, setIdentifier] = useState('');
+  const [loadingPersonnel, setLoadingPersonnel] = useState(false);
+
+  // Admin login state (Username & Password)
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loadingAdmin, setLoadingAdmin] = useState(false);
+  const [adminErr, setAdminErr] = useState<string | null>(null);
+
+  // Password change modal state after first login
+  const [pendingUser, setPendingUser] = useState<AppUser | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPass, setChangingPass] = useState(false);
+
+  // Load stored users from localStorage or initial master personnel
+  const getUsers = (): AppUser[] => {
     try {
-      await signInWithGoogle();
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      if (msg.includes('popup-closed-by-user')) {
-        setErr('پنجره‌ی ورود بسته شد. دوباره تلاش کنید.');
+      const raw = localStorage.getItem('rsi_app_users');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // fallback
+    }
+    const seeded: AppUser[] = INITIAL_MASTER_PERSONNEL.map((p, idx) => ({
+      id: `u_${idx}_${p.personnelId}`,
+      personnelId: p.personnelId,
+      name: p.name,
+      nationalCode: p.nationalCode,
+      mobile: p.mobile,
+      dept: p.dept,
+      hireDate: p.hireDate,
+      role: p.role,
+      username: p.username || (p.role === 'admin' ? 'admin' : undefined),
+      passwordHash: p.password || p.nationalCode, // default temp password is national code or preset
+      mustChangePassword: p.mustChangePassword ?? (p.role !== 'employee'),
+      hasResultAccess: p.hasResultAccess,
+    }));
+    localStorage.setItem('rsi_app_users', JSON.stringify(seeded));
+    return seeded;
+  };
+
+  const handlePersonnelLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const queryId = identifier.trim();
+    if (!queryId) {
+      onToast('کد ملی یا کد پرسنلی را وارد کنید');
+      return;
+    }
+    setLoadingPersonnel(true);
+    try {
+      const users = getUsers();
+      const found = users.find(
+        (u) => u.nationalCode === queryId || u.personnelId === queryId || u.mobile === queryId
+      );
+      if (found) {
+        if (found.mustChangePassword) {
+          setPendingUser(found);
+        } else {
+          onLoginSuccess(found);
+          onToast(`خوش آمدید، ${found.name}`);
+        }
       } else {
-        setErr('خطا در ورود با گوگل. لطفاً مسدودکننده‌ی پاپ‌آپ را بررسی کنید و دوباره بزنید.');
+        // If not found in seeded list, allow dynamic employee creation for filling tests!
+        const dynamicUser: AppUser = {
+          id: `u_dyn_${Date.now()}`,
+          personnelId: queryId.length <= 6 ? queryId : '99999',
+          name: 'پرسنل گرامی',
+          nationalCode: queryId.length === 10 ? queryId : '0000000000',
+          mobile: '',
+          dept: 'عمومی',
+          hireDate: '1405/01/01',
+          role: 'employee',
+          hasResultAccess: false,
+        };
+        const usersList = getUsers();
+        usersList.push(dynamicUser);
+        localStorage.setItem('rsi_app_users', JSON.stringify(usersList));
+        onLoginSuccess(dynamicUser);
+        onToast('خوش آمدید');
       }
     } finally {
-      setBusy(false);
+      setLoadingPersonnel(false);
     }
   };
+
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const uName = username.trim();
+    const pass = password;
+    if (!uName || !pass) {
+      setAdminErr('نام کاربری و رمز عبور را وارد کنید');
+      return;
+    }
+    setLoadingAdmin(true);
+    setAdminErr(null);
+    try {
+      const users = getUsers();
+      const found = users.find(
+        (u) =>
+          (u.username === uName || u.nationalCode === uName || u.personnelId === uName) &&
+          (u.passwordHash === pass || u.nationalCode === pass)
+      );
+      if (found) {
+        if (found.mustChangePassword) {
+          setPendingUser(found);
+        } else {
+          onLoginSuccess(found);
+          onToast(`خوش آمدید، ${found.name}`);
+        }
+      } else {
+        setAdminErr('نام کاربری یا رمز عبور اشتباه است');
+      }
+    } finally {
+      setLoadingAdmin(false);
+    }
+  };
+
+  const handleChangePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingUser) return;
+    if (!newPassword || newPassword.length < 6) {
+      onToast('رمز عبور جدید باید حداقل ۶ کاراکتر باشد');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      onToast('تکرار رمز عبور مطابقت ندارد');
+      return;
+    }
+    setChangingPass(true);
+    try {
+      const users = getUsers();
+      const updated = users.map((u) => {
+        if (u.id === pendingUser.id) {
+          return {
+            ...u,
+            passwordHash: newPassword,
+            mustChangePassword: false,
+          };
+        }
+        return u;
+      });
+      localStorage.setItem('rsi_app_users', JSON.stringify(updated));
+      const finalUsr = updated.find((u) => u.id === pendingUser.id)!;
+      setPendingUser(null);
+      onLoginSuccess(finalUsr);
+      onToast('رمز عبور با موفقیت به‌روزرسانی شد');
+    } finally {
+      setChangingPass(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    try {
+      await signInWithGoogle();
+      // If Google succeeds, map to an admin user
+      const adminUsr: AppUser = {
+        id: 'google_admin',
+        personnelId: '1000',
+        name: 'مدیر سیستم (گوگل)',
+        nationalCode: '0000000000',
+        mobile: '',
+        dept: 'مدیریت',
+        hireDate: '1400/01/01',
+        role: 'admin',
+        hasResultAccess: true,
+      };
+      onLoginSuccess(adminUsr);
+      onToast('با موفقیت وارد شدید');
+    } catch {
+      onToast('خطا در ورود با گوگل');
+    }
+  };
+
+  if (pendingUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-[#edf0f2] dark:bg-[#12181e]">
+        <div className="w-full max-w-md bg-white dark:bg-[#1b242c] border border-[#d5dce1] dark:border-[#33414d] rounded-xl p-6 sm:p-8 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-[10px] bg-[#0e6a88] text-white grid place-items-center font-extrabold text-xl shrink-0">
+              <KeyRound className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-lg font-extrabold">تغییر رمز عبور الزامی است</h1>
+              <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
+                {pendingUser.name} عزیز، لطفاً برای امنیت حساب کاربری خود رمز عبور جدید تعیین کنید.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleChangePassword} className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium mb-1">رمز عبور جدید (حداقل ۶ کاراکتر)</label>
+              <input
+                type="password"
+                required
+                dir="ltr"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm num-ltr"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1">تکرار رمز عبور جدید</label>
+              <input
+                type="password"
+                required
+                dir="ltr"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm num-ltr"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={changingPass}
+              className="w-full py-2.5 px-4 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-95 cursor-pointer text-sm"
+            >
+              {changingPass ? 'در حال ذخیره…' : 'ثبت رمز عبور جدید و ورود'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[#edf0f2] dark:bg-[#12181e]">
@@ -38,69 +251,141 @@ export const AuthGate: React.FC<Props> = ({ unverifiedEmail, onSignOut }) => {
           <div>
             <h1 className="text-xl font-extrabold leading-tight">روان‌سنج صنعتی</h1>
             <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
-              سامانه چندرایانه‌ای آزمون‌های روان‌شناختی محیط کار
+              سامانه جامع آزمون‌های روان‌شناختی محیط کار
             </p>
           </div>
         </div>
 
-        {unverifiedEmail ? (
-          <div className="space-y-4">
-            <div className="rounded-lg p-3.5 bg-[#fde6d2] dark:bg-[#41290f] border border-[#b4560f] text-sm">
-              <b>تأیید ایمیل لازم است</b>
-              <p className="mt-1">
-                ایمیل <span className="num-ltr font-semibold">{unverifiedEmail}</span> هنوز تأیید
-                نشده است. برای حفظ محرمانگی پرونده‌های روان‌شناختی، فقط حساب‌های تأییدشده مجاز به
-                دسترسی به پایگاه داده مشترک هستند.
-              </p>
+        {/* Tabs */}
+        <div className="grid grid-cols-3 gap-1 p-1 bg-[#f4f6f7] dark:bg-[#222d36] rounded-lg mb-5 text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => setTab('personnel')}
+            className={`py-2 rounded-md transition-colors cursor-pointer ${
+              tab === 'personnel'
+                ? 'bg-white dark:bg-[#1b242c] text-[#1b2733] dark:text-[#e6ecf0] shadow-xs'
+                : 'text-[#5a6a78] dark:text-[#9aabb8] hover:text-[#1b2733]'
+            }`}
+          >
+            ورود پرسنل (کد ملی)
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('admin')}
+            className={`py-2 rounded-md transition-colors cursor-pointer ${
+              tab === 'admin'
+                ? 'bg-white dark:bg-[#1b242c] text-[#1b2733] dark:text-[#e6ecf0] shadow-xs'
+                : 'text-[#5a6a78] dark:text-[#9aabb8] hover:text-[#1b2733]'
+            }`}
+          >
+            مدیران / ارزیابان
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('google')}
+            className={`py-2 rounded-md transition-colors cursor-pointer ${
+              tab === 'google'
+                ? 'bg-white dark:bg-[#1b242c] text-[#1b2733] dark:text-[#e6ecf0] shadow-xs'
+                : 'text-[#5a6a78] dark:text-[#9aabb8] hover:text-[#1b2733]'
+            }`}
+          >
+            حساب گوگل
+          </button>
+        </div>
+
+        {tab === 'personnel' && (
+          <form onSubmit={handlePersonnelLogin} className="space-y-4">
+            <div className="rounded-lg p-3 bg-[#dcedf3] dark:bg-[#17323d] border border-[#0e6a88] text-xs leading-6">
+              <b>تکمیل آزمون برای پرسنل:</b> کد ملی (۱۰ رقم) یا کد پرسنلی خود را وارد کنید تا به
+              پرسشنامه‌ها و آزمون‌های اختصاص‌یافته دسترسی پیدا کنید.
             </div>
-            {onSignOut && (
-              <button
-                type="button"
-                onClick={onSignOut}
-                className="w-full py-2.5 px-4 rounded-lg font-bold border border-[#d5dce1] dark:border-[#33414d] cursor-pointer"
-              >
-                خروج و ورود با حساب دیگر
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-5">
-            <p className="text-sm text-[#1b2733] dark:text-[#e6ecf0] leading-7">
-              این نسخه به پایگاه داده ابری مشترک متصل است تا چند رایانه در واحد ایمنی (HSE)، طب کار
-              و منابع انسانی بتوانند هم‌زمان پرونده‌ها را ثبت، آزمون‌ها را اجرا و نتایج را مشاهده
-              کنند.
-            </p>
-
-            <div className="space-y-2.5 border-y border-[#d5dce1] dark:border-[#33414d] py-4 text-xs text-[#5a6a78] dark:text-[#9aabb8]">
-              <div className="flex items-start gap-2.5">
-                <MonitorCheck className="w-4 h-4 text-[#0e6a88] dark:text-[#4fb4d4] shrink-0 mt-0.5" />
-                <span>
-                  همگام‌سازی زنده بین چند رایانه: ورود با یک حساب مشترک یا افزودن ایمیل همکاران در
-                  تنظیمات پایگاه داده.
-                </span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <ShieldCheck className="w-4 h-4 text-[#23804f] dark:text-[#5cc78d] shrink-0 mt-0.5" />
-                <span>
-                  دسترسی ایزوله و امن: داده‌ها فقط برای مالک و ایمیل‌های مجازِ تعریف‌شده در پایگاه
-                  داده قابل مشاهده است.
-                </span>
-              </div>
+            <div>
+              <label className="block text-xs font-medium mb-1">کد ملی یا کد پرسنلی</label>
+              <input
+                type="text"
+                required
+                dir="ltr"
+                placeholder="مثلاً: 4568756561 یا 22005"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm num-ltr font-semibold"
+              />
             </div>
-
-            {err && (
-              <div className="rounded-lg p-3 bg-[#fbdcdc] dark:bg-[#431c1c] border border-[#b83232] text-xs font-medium">
-                {err}
-              </div>
-            )}
-
             <button
               type="button"
-              disabled={busy}
-              onClick={handleLogin}
-              className="w-full py-3 px-4 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-95 disabled:opacity-60 cursor-pointer transition-opacity"
+              onClick={() => setIdentifier('22005')}
+              className="text-xs text-[#0e6a88] dark:text-[#4fb4d4] hover:underline cursor-pointer block"
             >
-              {busy ? 'در حال اتصال…' : 'ورود با حساب گوگل و اتصال به پایگاه داده'}
+              نمونه تست پرسنلی (کد پرسنلی: 22005)
+            </button>
+            <button
+              type="submit"
+              disabled={loadingPersonnel}
+              className="w-full py-3 px-4 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-95 disabled:opacity-60 cursor-pointer text-sm"
+            >
+              {loadingPersonnel ? 'در حال بررسی…' : 'ورود به سامانه آزمون'}
+            </button>
+          </form>
+        )}
+
+        {tab === 'admin' && (
+          <form onSubmit={handleAdminLogin} className="space-y-4">
+            <div className="rounded-lg p-3 bg-[#fbf0cc] dark:bg-[#3b3213] border border-[#8a6a00] text-xs leading-6">
+              <b>ویژه‌ی مدیران و ارزیابان (HSE / طب کار):</b> دسترسی کامل به نتایج، گزارش‌ها و مدیریت
+              کاربران. نام کاربری پیش‌فرض مدیر: <code className="num-ltr">admin</code> / رمز عبور:{' '}
+              <code className="num-ltr">admin123</code> (در اولین ورود تغییر خواهد کرد).
+            </div>
+            {adminErr && (
+              <div className="rounded-lg p-3 bg-[#fbdcdc] dark:bg-[#431c1c] border border-[#b83232] text-xs font-medium">
+                {adminErr}
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-medium mb-1">نام کاربری یا کد ملی</label>
+              <input
+                type="text"
+                required
+                dir="ltr"
+                placeholder="admin"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm num-ltr"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1">رمز عبور</label>
+              <input
+                type="password"
+                required
+                dir="ltr"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm num-ltr"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loadingAdmin}
+              className="w-full py-3 px-4 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-95 disabled:opacity-60 cursor-pointer text-sm"
+            >
+              {loadingAdmin ? 'در حال ورود…' : 'ورود مدیریت'}
+            </button>
+          </form>
+        )}
+
+        {tab === 'google' && (
+          <div className="space-y-4">
+            <p className="text-sm text-[#1b2733] dark:text-[#e6ecf0] leading-7">
+              اگر به اینترنت و حساب گوگل دسترسی دارید، می‌توانید از طریق دکمه‌ی زیر به پایگاه داده ابری
+              مشترک متصل شوید.
+            </p>
+            <button
+              type="button"
+              onClick={handleGoogle}
+              className="w-full py-3 px-4 rounded-lg font-bold bg-white dark:bg-[#1b242c] border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer text-sm flex items-center justify-center gap-2"
+            >
+              <Users className="w-4 h-4 text-[#0e6a88]" />
+              <span>ورود با حساب گوگل</span>
             </button>
           </div>
         )}

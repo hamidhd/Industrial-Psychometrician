@@ -139,4 +139,19 @@ export interface TestResult {
   createdAt?: unknown;
 }
 
+export interface AppUser {
+  id: string;
+  personnelId: string;
+  name: string;
+  nationalCode: string;
+  mobile: string;
+  dept: string;
+  hireDate: string;
+  role: 'admin' | 'evaluator' | 'employee';
+  username?: string;
+  passwordHash?: string;
+  mustChangePassword?: boolean;
+  hasResultAccess: boolean;
+}
+
 export type ViewName = 'home' | 'people' | 'run' | 'results' | 'help' | 'settings';
