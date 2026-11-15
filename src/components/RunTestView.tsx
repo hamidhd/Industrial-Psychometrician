@@ -8,13 +8,18 @@ import {
   scoreQuestionnaire,
   testById,
 } from '../data/tests';
+import { getCategoryForDept } from '../data/workUnits';
 import { createTestResult } from '../services/firestoreService';
+import { localCreateTestResult } from '../services/localStoreService';
 import type { Person, TestId, Workspace } from '../types/psychometrics';
 import { PerformanceTaskRunner } from './PerformanceTasks';
 import { QuestionnaireRunner } from './QuestionnaireRunner';
 
 interface Props {
-  user: User;
+  useCloud: boolean;
+  firebaseUser: User | null;
+  currentUserId: string;
+  canSelectAnyPerson: boolean;
   workspace: Workspace;
   computerLabel: string;
   people: Person[];
@@ -26,7 +31,10 @@ interface Props {
 }
 
 export const RunTestView: React.FC<Props> = ({
-  user,
+  useCloud,
+  firebaseUser,
+  currentUserId,
+  canSelectAnyPerson,
   workspace,
   computerLabel,
   people,
@@ -47,20 +55,27 @@ export const RunTestView: React.FC<Props> = ({
       <div className="space-y-4">
         <h1 className="text-2xl font-extrabold">اجرای آزمون</h1>
         <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5 space-y-3">
-          <p className="text-sm">ابتدا باید فردی ثبت شود.</p>
-          <button
-            type="button"
-            onClick={onGoPeople}
-            className="px-4 py-2 rounded-lg font-bold bg-[#0e6a88] text-white text-sm cursor-pointer"
-          >
-            ثبت فرد جدید
-          </button>
+          <p className="text-sm">
+            {canSelectAnyPerson
+              ? 'ابتدا باید فردی ثبت شود یا لیست پرسنل کارخانه را وارد کنید.'
+              : 'در حال آماده‌سازی پرونده کاربری شما…'}
+          </p>
+          {canSelectAnyPerson && (
+            <button
+              type="button"
+              onClick={onGoPeople}
+              className="px-4 py-2 rounded-lg font-bold bg-[#0e6a88] text-white text-sm cursor-pointer"
+            >
+              رفتن به پرسنل و داوطلبان
+            </button>
+          )}
         </div>
       </div>
     );
   }
 
   const activePerson = people.find((p) => p.id === selectedPersonId) || people[0];
+  const deptCat = getCategoryForDept(activePerson.dept);
 
   if (queue) {
     const currentTest = testById(queue[queueIdx]);
@@ -71,20 +86,28 @@ export const RunTestView: React.FC<Props> = ({
     }) => {
       setSavingResult(true);
       try {
-        let scored: { dims: ReturnType<typeof scoreQuestionnaire>['dims']; flags: ReturnType<typeof scoreQuestionnaire>['flags'] };
+        let scored: {
+          dims: ReturnType<typeof scoreQuestionnaire>['dims'];
+          flags: ReturnType<typeof scoreQuestionnaire>['flags'];
+        };
         if (currentTest.type === 'q') {
           scored = scoreQuestionnaire(currentTest, payload.answers || []);
         } else {
           scored = currentTest.interpret(payload.taskMetrics || {});
         }
-        await createTestResult(workspace, user, computerLabel, {
+        const payloadToSave = {
           personId: activePerson.id,
           testId: currentTest.id,
           answers: payload.answers,
           taskMetrics: payload.taskMetrics,
           dims: scored.dims,
           flags: scored.flags,
-        });
+        };
+        if (useCloud && firebaseUser) {
+          await createTestResult(workspace, firebaseUser, computerLabel, payloadToSave);
+        } else {
+          localCreateTestResult(workspace, currentUserId, computerLabel, payloadToSave);
+        }
 
         if (queueIdx + 1 < queue.length) {
           setStepState('saved');
@@ -92,7 +115,7 @@ export const RunTestView: React.FC<Props> = ({
           setQueue(null);
           setQueueIdx(0);
           setStepState('intro');
-          onToast('همه‌ی آزمون‌ها در پایگاه داده مشترک ثبت شد');
+          onToast('همه‌ی آزمون‌ها با موفقیت ثبت شد');
           onFinishAll(activePerson.id);
         }
       } catch {
@@ -130,7 +153,7 @@ export const RunTestView: React.FC<Props> = ({
 
           {savingResult ? (
             <div className="py-12 text-center text-sm text-[#5a6a78] dark:text-[#9aabb8]">
-              در حال ثبت نتیجه در پایگاه داده مشترک…
+              در حال ثبت نتیجه در پایگاه داده…
             </div>
           ) : stepState === 'intro' ? (
             <div className="space-y-3">
@@ -191,45 +214,84 @@ export const RunTestView: React.FC<Props> = ({
     <div className="space-y-4">
       <h1 className="text-2xl font-extrabold">اجرای آزمون</h1>
 
-      <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5">
-        <h2 className="text-lg font-bold mb-2">۱) فرد</h2>
-        <select
-          value={activePerson.id}
-          onChange={(e) => onSelectPerson(e.target.value)}
-          className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
-        >
-          {people.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} — {KIND_LABEL[p.kind]}
-              {p.job ? ` — ${p.job}` : ''}
-            </option>
-          ))}
-        </select>
+      <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5 space-y-2.5">
+        <h2 className="text-lg font-bold">۱) فرد مورد ارزیابی</h2>
+        {canSelectAnyPerson ? (
+          <select
+            value={activePerson.id}
+            onChange={(e) => onSelectPerson(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+          >
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} — {KIND_LABEL[p.kind]}
+                {p.dept ? ` (${p.dept})` : ''}
+                {p.job ? ` — ${p.job}` : ''}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <div className="text-sm font-bold">
+            {activePerson.name}
+            {activePerson.code ? ` · کد: ${activePerson.code}` : ''}
+            {activePerson.dept ? ` · واحد: ${activePerson.dept}` : ''}
+          </div>
+        )}
+
+        {deptCat && (
+          <div className="rounded-lg p-3 bg-[#dcedf3]/60 dark:bg-[#17323d]/60 border border-[#0e6a88]/40 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span>
+              واحد کاری فعلی (<b>{activePerson.dept}</b>) در گروه «{deptCat.shortTitle}» (
+              {deptCat.workSettingLabel}) قرار دارد.
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setCheckedIds(deptCat.recommendedTests);
+                onToast(`بسته‌ی تخصصی «${deptCat.shortTitle}» انتخاب شد`);
+              }}
+              className="px-3 py-1.5 rounded-md font-bold bg-[#0e6a88] text-white cursor-pointer whitespace-nowrap"
+            >
+              انتخاب بسته‌ی پیشنهادی این واحد
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5 space-y-3">
         <div>
-          <h2 className="text-lg font-bold">۲) آزمون‌ها</h2>
+          <h2 className="text-lg font-bold">۲) بسته‌های شغلی و آزمون‌های علمی</h2>
           <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
-            یک بسته‌ی پیشنهادی را انتخاب کنید یا آزمون‌ها را دستی علامت بزنید.
+            برای تعیین مستقیم اینکه فرد مناسب کار پشت‌میزی، میدانی، فنی یا کدام یک از ۳۵ واحد کارخانه
+            است، بسته‌ی اول («تعیین واحد کاری») را انتخاب کنید.
           </p>
         </div>
 
         <div className="flex flex-wrap gap-1.5">
-          {BATTERIES.map((b, i) => (
-            <button
-              key={i}
-              type="button"
-              title={b.note}
-              onClick={() => {
-                setCheckedIds(b.tests);
-                onToast(b.note);
-              }}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer whitespace-nowrap"
-            >
-              {b.name}
-            </button>
-          ))}
+          {BATTERIES.map((b) => {
+            const isPlacement = b.id === 'placement';
+            const isMatchedDept = deptCat && b.categoryId === deptCat.id;
+            return (
+              <button
+                key={b.id}
+                type="button"
+                title={b.note}
+                onClick={() => {
+                  setCheckedIds(b.tests);
+                  onToast(b.note);
+                }}
+                className={`px-3 py-1.5 text-xs rounded-lg border cursor-pointer whitespace-nowrap transition-colors ${
+                  isPlacement
+                    ? 'border-[#0e6a88] bg-[#dcedf3]/70 dark:bg-[#17323d] font-bold text-[#0e6a88] dark:text-[#4fb4d4]'
+                    : isMatchedDept
+                    ? 'border-[#23804f] dark:border-[#5cc78d] font-bold'
+                    : 'border-[#d5dce1] dark:border-[#33414d] font-medium hover:border-[#0e6a88]'
+                }`}
+              >
+                {b.name}
+              </button>
+            );
+          })}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

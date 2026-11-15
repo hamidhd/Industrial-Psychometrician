@@ -112,7 +112,7 @@ service cloud.firestore {
         && isValidId(data.personId)
         && isValidId(data.ownerId)
         && isEmailList(data.allowedEmails)
-        && data.testId in ['ipip', 'dass', 'safety', 'integrity', 'burnout', 'fatigue', 'reaction', 'stroop', 'digits', 'trail']
+        && data.testId in ['riasec', 'ipip', 'dass', 'safety', 'integrity', 'burnout', 'fatigue', 'reaction', 'stroop', 'digits', 'trail']
         && data.date is number
         && data.computerLabel is string && data.computerLabel.size() <= 80
         && isValidId(data.recordedByUid)

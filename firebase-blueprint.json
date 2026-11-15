@@ -153,7 +153,7 @@
         },
         "testId": {
           "type": "string",
-          "enum": ["ipip", "dass", "safety", "integrity", "burnout", "fatigue", "reaction", "stroop", "digits", "trail"]
+          "enum": ["riasec", "ipip", "dass", "safety", "integrity", "burnout", "fatigue", "reaction", "stroop", "digits", "trail"]
         },
         "date": {
           "type": "number"

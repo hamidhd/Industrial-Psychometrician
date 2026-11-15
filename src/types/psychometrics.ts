@@ -1,6 +1,7 @@
 export type Tone = 'good' | 'mid' | 'warn' | 'bad' | 'info';
 
 export type TestId =
+  | 'riasec'
   | 'ipip'
   | 'dass'
   | 'safety'
@@ -13,6 +14,23 @@ export type TestId =
   | 'trail';
 
 export type PersonKind = 'candidate' | 'employee';
+
+export type WorkSettingType =
+  | 'field'
+  | 'technical'
+  | 'desk'
+  | 'lab'
+  | 'leadership'
+  | 'support';
+
+export type OccupationalCategoryId =
+  | 'production'
+  | 'technical'
+  | 'quality'
+  | 'logistics'
+  | 'office'
+  | 'commercial'
+  | 'safety_support';
 
 export interface BandDef {
   upTo: number;
@@ -85,7 +103,9 @@ export interface TaskDef {
 export type AnyTestDef = QuestionnaireDef | TaskDef;
 
 export interface BatteryDef {
+  id: string;
   name: string;
+  categoryId?: OccupationalCategoryId;
   tests: TestId[];
   note: string;
 }

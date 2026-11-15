@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { onAuthStateChanged, type User } from 'firebase/auth';
 import {
   BookOpen,
   ClipboardCheck,
@@ -17,13 +18,29 @@ import { PeopleView } from './components/PeopleView';
 import { ResultsView } from './components/ResultsView';
 import { RunTestView } from './components/RunTestView';
 import { SettingsView } from './components/SettingsView';
+import { normalizeFa } from './data/workUnits';
+import { auth, signOutUser } from './firebase';
 import {
+  createPerson,
   createWorkspace,
   subscribePeople,
   subscribeResults,
   subscribeWorkspaces,
 } from './services/firestoreService';
-import type { AppUser, Person, TestResult, ViewName, Workspace } from './types/psychometrics';
+import {
+  localCreatePerson,
+  subscribeLocalPeople,
+  subscribeLocalResults,
+  subscribeLocalWorkspaces,
+} from './services/localStoreService';
+import type {
+  AppUser,
+  OccupationalCategoryId,
+  Person,
+  TestResult,
+  ViewName,
+  Workspace,
+} from './types/psychometrics';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(() => {
@@ -36,6 +53,9 @@ export default function App() {
     return null;
   });
 
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [wsLoaded, setWsLoaded] = useState(false);
   const [activeWsId, setActiveWsId] = useState<string>(
@@ -45,9 +65,11 @@ export default function App() {
   const [people, setPeople] = useState<Person[]>([]);
   const [results, setResults] = useState<TestResult[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
+  const [peopleReady, setPeopleReady] = useState(false);
 
   const [view, setView] = useState<ViewName>(() => (currentUser?.hasResultAccess ? 'home' : 'run'));
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<'' | OccupationalCategoryId>('');
 
   const [computerLabel, setComputerLabel] = useState<string>(
     () => localStorage.getItem('rsi_computer_label') || 'رایانه ۱'
@@ -63,11 +85,22 @@ export default function App() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const toastTimerRef = useRef<number | null>(null);
   const creatingDefaultRef = useRef(false);
+  const autoCreatingEmployeeRef = useRef<string | null>(null);
+
+  const useCloud = Boolean(firebaseUser && firebaseUser.email && firebaseUser.emailVerified);
 
   const showToast = useCallback((msg: string) => {
     setToastMsg(msg);
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     toastTimerRef.current = window.setTimeout(() => setToastMsg(null), 2800);
+  }, []);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (fbUser) => {
+      setFirebaseUser(fbUser);
+      setAuthReady(true);
+    });
+    return unsub;
   }, []);
 
   useEffect(() => {
@@ -78,6 +111,8 @@ export default function App() {
   const handleLoginSuccess = (usr: AppUser) => {
     setCurrentUser(usr);
     localStorage.setItem('rsi_logged_session', JSON.stringify(usr));
+    creatingDefaultRef.current = false;
+    autoCreatingEmployeeRef.current = null;
     if (!usr.hasResultAccess) {
       setView('run');
     } else {
@@ -87,7 +122,11 @@ export default function App() {
 
   const handleLogout = () => {
     setCurrentUser(null);
+    setSelectedPersonId(null);
     localStorage.removeItem('rsi_logged_session');
+    if (firebaseUser) {
+      void signOutUser().catch(() => {});
+    }
   };
 
   const handleComputerLabelChange = (label: string) => {
@@ -101,34 +140,46 @@ export default function App() {
     setSelectedPersonId(null);
   };
 
-  // Subscribe to workspaces
+  // Subscribe to workspaces (Firestore when signed in with Google, Local Store otherwise)
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !authReady) return;
     setWsLoaded(false);
-    const email = currentUser.role === 'admin' ? 'admin@ravansanj.local' : 'user@ravansanj.local';
-    const unsub = subscribeWorkspaces(
-      email,
-      (list) => {
-        setWorkspaces(list);
-        setWsLoaded(true);
-        if (list.length === 0 && !creatingDefaultRef.current) {
-          creatingDefaultRef.current = true;
-          // Create default workspace using mock user object
-          void createWorkspace(
-            { uid: currentUser.id, email } as any,
-            'مجتمع صنعتی — واحد ارزیابی',
-            currentUser.name
-          ).then((id) => {
-            handleSelectWorkspace(id);
-          });
+
+    if (useCloud && firebaseUser?.email) {
+      const email = firebaseUser.email;
+      const unsub = subscribeWorkspaces(
+        email,
+        (list) => {
+          setWorkspaces(list);
+          setWsLoaded(true);
+          if (list.length === 0 && !creatingDefaultRef.current) {
+            creatingDefaultRef.current = true;
+            void createWorkspace(
+              firebaseUser,
+              'مجتمع صنعتی دانیال استیل — واحد ارزیابی',
+              currentUser.name
+            )
+              .then((id) => {
+                handleSelectWorkspace(id);
+              })
+              .catch(() => {
+                creatingDefaultRef.current = false;
+              });
+          }
+        },
+        () => {
+          setWsLoaded(true);
         }
-      },
-      () => {
-        setWsLoaded(true);
-      }
-    );
-    return unsub;
-  }, [currentUser]);
+      );
+      return unsub;
+    }
+
+    const unsubLocal = subscribeLocalWorkspaces((list) => {
+      setWorkspaces(list);
+      setWsLoaded(true);
+    });
+    return unsubLocal;
+  }, [currentUser, authReady, useCloud, firebaseUser]);
 
   const activeWorkspace =
     workspaces.find((w) => w.id === activeWsId) || workspaces[0] || null;
@@ -138,58 +189,130 @@ export default function App() {
     if (!currentUser || !activeWorkspace) {
       setPeople([]);
       setResults([]);
+      setPeopleReady(false);
       return;
     }
     setDataLoading(true);
+    setPeopleReady(false);
     let pDone = false;
     let rDone = false;
     const checkDone = () => {
       if (pDone && rDone) setDataLoading(false);
     };
 
-    const email = currentUser.role === 'admin' ? 'admin@ravansanj.local' : 'user@ravansanj.local';
-    const unsubPeople = subscribePeople(
-      activeWorkspace.id,
-      email,
-      (list) => {
-        setPeople(list);
-        pDone = true;
-        checkDone();
-      },
-      () => {
-        pDone = true;
-        checkDone();
-      }
-    );
+    if (useCloud && firebaseUser?.email) {
+      const email = firebaseUser.email;
+      const unsubPeople = subscribePeople(
+        activeWorkspace.id,
+        email,
+        (list) => {
+          setPeople(list);
+          setPeopleReady(true);
+          pDone = true;
+          checkDone();
+        },
+        () => {
+          setPeopleReady(true);
+          pDone = true;
+          checkDone();
+        }
+      );
 
-    const unsubResults = subscribeResults(
-      activeWorkspace.id,
-      email,
-      (list) => {
-        setResults(list);
-        rDone = true;
-        checkDone();
-      },
-      () => {
-        rDone = true;
-        checkDone();
-      }
-    );
+      const unsubResults = subscribeResults(
+        activeWorkspace.id,
+        email,
+        (list) => {
+          setResults(list);
+          rDone = true;
+          checkDone();
+        },
+        () => {
+          rDone = true;
+          checkDone();
+        }
+      );
+
+      return () => {
+        unsubPeople();
+        unsubResults();
+      };
+    }
+
+    const unsubLocalP = subscribeLocalPeople(activeWorkspace.id, (list) => {
+      setPeople(list);
+      setPeopleReady(true);
+      pDone = true;
+      checkDone();
+    });
+
+    const unsubLocalR = subscribeLocalResults(activeWorkspace.id, (list) => {
+      setResults(list);
+      rDone = true;
+      checkDone();
+    });
 
     return () => {
-      unsubPeople();
-      unsubResults();
+      unsubLocalP();
+      unsubLocalR();
     };
-  }, [activeWorkspace?.id, currentUser]);
+  }, [activeWorkspace?.id, currentUser, useCloud, firebaseUser]);
+
+  // Auto-register logged-in employee in workspace people list if not already present
+  useEffect(() => {
+    if (!currentUser || currentUser.hasResultAccess || !activeWorkspace || !peopleReady) return;
+
+    const matched = people.find(
+      (p) =>
+        (currentUser.personnelId && p.code === currentUser.personnelId) ||
+        (currentUser.nationalCode && p.code === currentUser.nationalCode) ||
+        normalizeFa(p.name) === normalizeFa(currentUser.name)
+    );
+
+    if (matched) {
+      if (!selectedPersonId) setSelectedPersonId(matched.id);
+      return;
+    }
+
+    const guardKey = `${activeWorkspace.id}_${currentUser.id}`;
+    if (autoCreatingEmployeeRef.current === guardKey) return;
+    autoCreatingEmployeeRef.current = guardKey;
+
+    const payload = {
+      name: currentUser.name,
+      code: currentUser.personnelId || currentUser.nationalCode || '',
+      kind: 'employee' as const,
+      dept: currentUser.dept || '',
+      job: '',
+      age: '',
+      consent: true,
+    };
+
+    if (useCloud && firebaseUser) {
+      void createPerson(activeWorkspace, firebaseUser, payload).then((id) => {
+        setSelectedPersonId(id);
+      });
+    } else {
+      const id = localCreatePerson(activeWorkspace, currentUser.id, payload);
+      setSelectedPersonId(id);
+    }
+  }, [
+    currentUser,
+    activeWorkspace,
+    peopleReady,
+    people,
+    selectedPersonId,
+    useCloud,
+    firebaseUser,
+  ]);
 
   if (!currentUser) {
     return <AuthGate onLoginSuccess={handleLoginSuccess} onToast={showToast} />;
   }
 
-  if (!wsLoaded || !activeWorkspace) {
+  if (!authReady || !wsLoaded || !activeWorkspace) {
     return (
       <div className="min-h-screen grid place-items-center text-sm text-[#5a6a78] dark:text-[#9aabb8]">
-        در حال آماده‌سازی پایگاه داده مشترک…
+        در حال آماده‌سازی پایگاه داده…
       </div>
     );
   }
@@ -198,6 +321,15 @@ export default function App() {
     setView(nextView);
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   };
+
+  const ownPerson = !currentUser.hasResultAccess
+    ? people.find(
+        (p) =>
+          (currentUser.personnelId && p.code === currentUser.personnelId) ||
+          (currentUser.nationalCode && p.code === currentUser.nationalCode) ||
+          normalizeFa(p.name) === normalizeFa(currentUser.name)
+      ) || null
+    : null;
 
   const navItems = currentUser.hasResultAccess
     ? [
@@ -210,7 +342,7 @@ export default function App() {
       ]
     : [
         { id: 'run' as ViewName, label: 'تکمیل آزمون', Icon: ClipboardCheck },
-        { id: 'results' as ViewName, label: 'سوابق من', Icon: FileBarChart2 },
+        { id: 'results' as ViewName, label: 'نتیجه و پیشنهاد شغلی من', Icon: FileBarChart2 },
         { id: 'help' as ViewName, label: 'راهنما', Icon: BookOpen },
       ];
 
@@ -242,7 +374,7 @@ export default function App() {
               </select>
             )}
 
-            <span className="hidden sm:inline text-xs text-[#5a6a78] dark:text-[#9aabb8] whitespace-nowrap truncate max-w-[220px]">
+            <span className="hidden sm:inline text-xs text-[#5a6a78] dark:text-[#9aabb8] whitespace-nowrap truncate max-w-[260px]">
               {currentUser.name} ({currentUser.role === 'admin' ? 'مدیر سیستم' : currentUser.role === 'evaluator' ? 'ارزیاب' : 'پرسنل'}) · {computerLabel}
             </span>
 
@@ -314,8 +446,15 @@ export default function App() {
               <div className="truncate font-medium text-[#1b2733] dark:text-[#e6ecf0]">
                 {currentUser.name}
               </div>
-              <div className="num-ltr truncate text-[11px]">
-                {currentUser.role === 'admin' ? 'مدیر ارشد' : currentUser.role === 'evaluator' ? 'ارزیاب / طب کار' : 'پرسنل گرامی'}
+              <div className="truncate text-[11px]">
+                {currentUser.role === 'admin'
+                  ? 'مدیر ارشد'
+                  : currentUser.role === 'evaluator'
+                  ? 'ارزیاب / طب کار'
+                  : `واحد: ${currentUser.dept || 'عمومی'}`}
+              </div>
+              <div className="text-[11px] text-[#0e6a88] dark:text-[#4fb4d4]">
+                {useCloud ? 'اتصال ابری فعال' : 'ذخیره‌سازی محلی / آفلاین'}
               </div>
             </div>
           </nav>
@@ -325,7 +464,7 @@ export default function App() {
         <main className="flex-1 min-w-0">
           {dataLoading && people.length === 0 ? (
             <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-8 text-center text-sm text-[#5a6a78] dark:text-[#9aabb8]">
-              در حال همگام‌سازی داده‌ها از پایگاه داده مشترک…
+              در حال بارگذاری داده‌ها…
             </div>
           ) : (
             <>
@@ -334,7 +473,12 @@ export default function App() {
                   people={people}
                   results={results}
                   computerLabel={computerLabel}
+                  useCloud={useCloud}
                   onNavigate={navigate}
+                  onOpenCategory={(catId) => {
+                    setCategoryFilter(catId);
+                    navigate('people');
+                  }}
                   onOpenPersonResults={(pid) => {
                     setSelectedPersonId(pid);
                     navigate('results');
@@ -344,10 +488,14 @@ export default function App() {
 
               {view === 'people' && currentUser.hasResultAccess && (
                 <PeopleView
-                  user={{ uid: currentUser.id, email: 'admin@ravansanj.local' } as any}
+                  useCloud={useCloud}
+                  firebaseUser={firebaseUser}
+                  currentUserId={currentUser.id}
                   workspace={activeWorkspace}
                   people={people}
                   results={results}
+                  categoryFilter={categoryFilter}
+                  onChangeCategoryFilter={setCategoryFilter}
                   onStartTestFor={(pid) => {
                     setSelectedPersonId(pid);
                     navigate('run');
@@ -362,17 +510,15 @@ export default function App() {
 
               {view === 'run' && (
                 <RunTestView
-                  user={{ uid: currentUser.id, email: 'user@ravansanj.local' } as any}
+                  useCloud={useCloud}
+                  firebaseUser={firebaseUser}
+                  currentUserId={currentUser.id}
+                  canSelectAnyPerson={currentUser.hasResultAccess}
                   workspace={activeWorkspace}
                   computerLabel={computerLabel}
-                  people={people}
+                  people={currentUser.hasResultAccess ? people : ownPerson ? [ownPerson] : []}
                   selectedPersonId={
-                    selectedPersonId ||
-                    (currentUser.hasResultAccess
-                      ? null
-                      : people.find((p) => p.code === currentUser.nationalCode || p.code === currentUser.personnelId)?.id ||
-                        people[0]?.id ||
-                        null)
+                    currentUser.hasResultAccess ? selectedPersonId : ownPerson?.id || null
                   }
                   onSelectPerson={setSelectedPersonId}
                   onGoPeople={() => navigate('people')}
@@ -386,28 +532,13 @@ export default function App() {
 
               {view === 'results' && (
                 <ResultsView
+                  useCloud={useCloud}
+                  canDelete={currentUser.hasResultAccess}
                   workspace={activeWorkspace}
-                  people={
-                    currentUser.hasResultAccess
-                      ? people
-                      : people.filter(
-                          (p) =>
-                            p.code === currentUser.nationalCode ||
-                            p.code === currentUser.personnelId ||
-                            p.name === currentUser.name
-                        )
-                  }
+                  people={currentUser.hasResultAccess ? people : ownPerson ? [ownPerson] : []}
                   results={results}
                   selectedPersonId={
-                    selectedPersonId ||
-                    (currentUser.hasResultAccess
-                      ? null
-                      : people.find(
-                          (p) =>
-                            p.code === currentUser.nationalCode ||
-                            p.code === currentUser.personnelId ||
-                            p.name === currentUser.name
-                        )?.id || null)
+                    currentUser.hasResultAccess ? selectedPersonId : ownPerson?.id || null
                   }
                   onSelectPerson={setSelectedPersonId}
                   onRunNewTest={() => navigate('run')}
@@ -419,7 +550,10 @@ export default function App() {
 
               {view === 'settings' && currentUser.hasResultAccess && (
                 <SettingsView
-                  user={{ uid: currentUser.id, email: 'admin@ravansanj.local' } as any}
+                  useCloud={useCloud}
+                  firebaseUser={firebaseUser}
+                  currentUserId={currentUser.id}
+                  currentUserName={currentUser.name}
                   workspaces={workspaces}
                   activeWorkspace={activeWorkspace}
                   onSelectWorkspace={handleSelectWorkspace}

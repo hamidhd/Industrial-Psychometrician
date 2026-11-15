@@ -289,6 +289,66 @@ export async function createPerson(
   }
 }
 
+export async function batchCreatePeople(
+  workspace: Workspace,
+  user: User,
+  items: Array<{
+    name: string;
+    code: string;
+    kind: PersonKind;
+    dept: string;
+    job: string;
+    age: string;
+  }>,
+  existingCodes: Set<string>
+): Promise<number> {
+  const path = `workspaces/${workspace.id}/people`;
+  const email = (user.email || '').trim().toLowerCase();
+  const toInsert: Array<{ id: string; data: Record<string, unknown> }> = [];
+  const baseTs = Date.now();
+
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    const cleanCode = normStr(it.code, 40);
+    if (cleanCode && existingCodes.has(cleanCode)) continue;
+    if (cleanCode) existingCodes.add(cleanCode);
+    const id = makeSafeId('p') + '_' + i;
+    toInsert.push({
+      id,
+      data: {
+        workspaceId: workspace.id,
+        ownerId: workspace.ownerId,
+        allowedEmails: workspace.allowedEmails,
+        name: normStr(it.name, 120),
+        code: cleanCode,
+        kind: it.kind,
+        dept: normStr(it.dept, 100),
+        job: normStr(it.job, 100),
+        age: normStr(it.age, 10),
+        consent: true,
+        created: baseTs - i,
+        createdByUid: user.uid,
+        createdByEmail: email,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+    });
+  }
+
+  try {
+    for (let i = 0; i < toInsert.length; i += 400) {
+      const batch = writeBatch(db);
+      for (const item of toInsert.slice(i, i + 400)) {
+        batch.set(doc(db, 'workspaces', workspace.id, 'people', item.id), item.data);
+      }
+      await batch.commit();
+    }
+    return toInsert.length;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
 export async function updatePerson(
   workspaceId: string,
   personId: string,

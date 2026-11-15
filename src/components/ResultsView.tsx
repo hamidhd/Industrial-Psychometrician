@@ -1,11 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { ALL_TESTS, faDigits, jdt, KIND_LABEL, testById } from '../data/tests';
 import { deleteTestResult } from '../services/firestoreService';
+import { localDeleteTestResult } from '../services/localStoreService';
 import type { Person, TestResult, Workspace } from '../types/psychometrics';
 import { DimensionRow, FlagBanner, ToneTag } from './DimensionDisplay';
+import { PlacementPanel } from './PlacementPanel';
 import { ReportModal } from './ReportModal';
 
 interface Props {
+  useCloud: boolean;
+  canDelete?: boolean;
   workspace: Workspace;
   people: Person[];
   results: TestResult[];
@@ -16,6 +20,8 @@ interface Props {
 }
 
 export const ResultsView: React.FC<Props> = ({
+  useCloud,
+  canDelete = true,
   workspace,
   people,
   results,
@@ -26,22 +32,12 @@ export const ResultsView: React.FC<Props> = ({
 }) => {
   const [showReport, setShowReport] = useState(false);
 
-  if (people.length === 0) {
-    return (
-      <div className="space-y-4">
-        <h1 className="text-2xl font-extrabold">نتایج و گزارش</h1>
-        <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5">
-          <p className="text-sm text-[#5a6a78] dark:text-[#9aabb8]">هنوز فردی ثبت نشده است.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const person = people.find((p) => p.id === selectedPersonId) || people[0];
+  const person = people.find((p) => p.id === selectedPersonId) || people[0] || null;
 
   const personResults = useMemo(
-    () => results.filter((r) => r.personId === person.id).sort((a, b) => b.date - a.date),
-    [results, person.id]
+    () =>
+      person ? results.filter((r) => r.personId === person.id).sort((a, b) => b.date - a.date) : [],
+    [results, person]
   );
 
   const latestByTest = useMemo(() => {
@@ -49,6 +45,15 @@ export const ResultsView: React.FC<Props> = ({
     [...personResults].reverse().forEach((r) => map.set(r.testId, r));
     return ALL_TESTS.map((t) => map.get(t.id)).filter(Boolean) as TestResult[];
   }, [personResults]);
+
+  const riasecResult = useMemo(
+    () => latestByTest.find((r) => r.testId === 'riasec'),
+    [latestByTest]
+  );
+  const ipipResult = useMemo(
+    () => latestByTest.find((r) => r.testId === 'ipip'),
+    [latestByTest]
+  );
 
   const attentionItems = useMemo(() => {
     const out: Array<{
@@ -72,9 +77,24 @@ export const ResultsView: React.FC<Props> = ({
     return out;
   }, [latestByTest]);
 
+  if (!person) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-extrabold">نتایج و گزارش</h1>
+        <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5">
+          <p className="text-sm text-[#5a6a78] dark:text-[#9aabb8]">هنوز فردی ثبت نشده است.</p>
+        </div>
+      </div>
+    );
+  }
+
   const handleDeleteResult = async (resultId: string) => {
     try {
-      await deleteTestResult(workspace.id, resultId);
+      if (useCloud) {
+        await deleteTestResult(workspace.id, resultId);
+      } else {
+        localDeleteTestResult(workspace.id, resultId);
+      }
       onToast('نتیجه حذف شد');
     } catch {
       onToast('خطا در حذف نتیجه');
@@ -127,6 +147,14 @@ export const ResultsView: React.FC<Props> = ({
         </p>
       </div>
 
+      {/* Placement Engine (Desk vs Field vs Technical & Top 5 Work Units) */}
+      <PlacementPanel
+        riasecResult={riasecResult}
+        ipipResult={ipipResult}
+        currentDept={person.dept}
+        onStartPlacementTest={onRunNewTest}
+      />
+
       {latestByTest.length > 0 ? (
         <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5">
           <h2 className="text-lg font-bold mb-2">موارد نیازمند توجه</h2>
@@ -173,13 +201,15 @@ export const ResultsView: React.FC<Props> = ({
                 {r.examiner ? ` · ارزیاب: ${r.examiner}` : ''}
               </span>
               <div className="flex-1" />
-              <button
-                type="button"
-                onClick={() => handleDeleteResult(r.id)}
-                className="px-2.5 py-1 text-xs rounded-md border border-[#b83232] text-[#b83232] dark:border-[#f07a7a] dark:text-[#f07a7a] cursor-pointer whitespace-nowrap"
-              >
-                حذف
-              </button>
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteResult(r.id)}
+                  className="px-2.5 py-1 text-xs rounded-md border border-[#b83232] text-[#b83232] dark:border-[#f07a7a] dark:text-[#f07a7a] cursor-pointer whitespace-nowrap"
+                >
+                  حذف
+                </button>
+              )}
             </div>
 
             {r.flags.map((f, i) => (

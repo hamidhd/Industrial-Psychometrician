@@ -1,5 +1,6 @@
 import React from 'react';
 import { ALL_TESTS, BATTERIES, faDigits, FINAL, testById } from '../data/tests';
+import { OCCUPATIONAL_CATEGORIES, PDF_WORK_UNITS } from '../data/workUnits';
 import type { AnyTestDef } from '../types/psychometrics';
 import { ToneTag } from './DimensionDisplay';
 
@@ -294,35 +295,75 @@ export const HelpView: React.FC = () => {
 
         <details className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c]">
           <summary className="cursor-pointer px-4 py-3 font-bold">
-            ۵) تفسیر ترکیبی (الگوهای مهم)
+            ۵) نقشه ۳۵ واحد کاری کارخانه و تعیین شغل پشت‌میزی در برابر میدانی (مدل هالند)
+          </summary>
+          <div className="px-4 pb-4 text-sm space-y-3">
+            <p className="leading-7">
+              سامانه با اجرای آزمون استاندارد <b>O*NET Mini-IP (مدل RIASEC جان هالند)</b> به همراه{' '}
+              <b>Mini-IPIP (پنج عامل بزرگ شخصیت)</b>، به‌صورت مستقیم درصد تناسب فرد را با ۵ نوع
+              محیط کار محاسبه می‌کند: <b>کار پشت‌میزی و اداری (C+I)</b>، <b>کار میدانی و خط تولید (R)</b>،{' '}
+              <b>کار فنی و تعمیرات (R+I)</b>، <b>کار آزمایشگاهی و کیفیت (I+C)</b> و{' '}
+              <b>کار مدیریتی و بازرگانی (E+S)</b>. سپس تمام ۳۵ واحد کاری شرکت به ترتیب درصد تناسب
+              رتبه‌بندی می‌شوند.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-xs min-w-[540px]">
+                <thead>
+                  <tr className="bg-[#f4f6f7] dark:bg-[#222d36] text-[#5a6a78] dark:text-[#9aabb8]">
+                    <th className="text-right p-2.5 font-medium">گروه شغلی</th>
+                    <th className="text-right p-2.5 font-medium">ماهیت محیط کار</th>
+                    <th className="text-right p-2.5 font-medium">واحدهای کاری کارخانه</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {OCCUPATIONAL_CATEGORIES.map((cat) => {
+                    const units = PDF_WORK_UNITS.filter((u) => u.categoryId === cat.id);
+                    return (
+                      <tr key={cat.id} className="border-b border-[#d5dce1] dark:border-[#33414d] align-top">
+                        <td className="p-2.5 font-bold whitespace-nowrap">{cat.shortTitle}</td>
+                        <td className="p-2.5 text-[#0e6a88] dark:text-[#4fb4d4] font-semibold whitespace-nowrap">
+                          {cat.workSettingLabel}
+                        </td>
+                        <td className="p-2.5 text-[#5a6a78] dark:text-[#9aabb8] leading-6">
+                          {units.map((u) => u.name).join('، ')}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c]">
+          <summary className="cursor-pointer px-4 py-3 font-bold">
+            ۶) تفسیر ترکیبی (الگوهای مهم)
           </summary>
           <div className="px-4 pb-4 text-sm">
             <ul className="list-disc pr-5 space-y-1.5">
               <li>
                 وظیفه‌شناسی پایین + ریسک‌پذیری بالا + پایبندی ضعیف به مقررات: الگوی پرخطر برای مشاغل
-                ایمنی‌محور (برق، ارتفاع، جرثقیل). مصاحبه‌ی رفتاری، آموزش و نظارت نزدیک یا انتخاب شغل
-                کم‌خطرتر.
+                ایمنی‌محور (برق، ارتفاع، نورد، لیفتراک). مصاحبه‌ی رفتاری، آموزش و نظارت نزدیک یا
+                انتخاب شغل کم‌خطرتر.
               </li>
               <li>
-                خستگی بالا + زمان واکنش کند یا نوسان زیاد: بررسی خواب و برنامه‌ی شیفت؛ در صورت
-                چرت‌زدن حین کار یا رانندگی، ارجاع به پزشک طب کار و محدودیت موقت کار پرخطر.
+                خستگی بالا (اپورث ≥۱۳) + زمان واکنش کند (PVT) یا نوسان زیاد: بررسی خواب و برنامه‌ی
+                شیفت؛ در صورت چرت‌زدن حین کار یا رانندگی، ارجاع به پزشک طب کار و محدودیت موقت کار
+                پرخطر.
               </li>
               <li>
-                استرس/اضطراب بالا (DASS) + ناپایداری هیجانی بالا: فشار روانی احتمالی؛ بازبینی بار
+                استرس/اضطراب بالا (DASS-21) + ناپایداری هیجانی بالا: فشار روانی احتمالی؛ بازبینی بار
                 کاری، مشاوره‌ی کارکنان و بررسی عوامل غیرکاری. نباید این الگو را تنها دلیل عدم
                 استخدام دانست.
               </li>
               <li>
-                فرسودگی بالا + کارآمدی پایین: بیشتر نشانه‌ی عوامل سازمانی (بار کار، عدالت، قدردانی)
-                است؛ نتایج واحد را گروهی مرور کنید.
+                فرسودگی بالا در مقیاس اولدنبورگ (OLBI): بیشتر نشانه‌ی بار کاری، شیفت یا عدم تناسب
+                واحد کاری است؛ نتایج واحد را با شاخص هالند مقایسه کنید.
               </li>
               <li>
-                مقیاس روایی «مشکوک»: نمرات خودگزارشی قابل اتکا نیست؛ آزمون را با توضیح مجدد و محیط
-                آرام‌تر تکرار یا بر مصاحبه و سوابق تکیه کنید.
-              </li>
-              <li>
-                نمرات پایین در تمام آزمون‌های عملکردی: ابتدا شرایط (بی‌خوابی، دارو، ناآشنایی با
-                رایانه، بینایی، کم‌سوادی، اضطراب آزمون) را بررسی و آزمون را در روز دیگر تکرار کنید.
+                مقیاس روایی Marlowe-Crowne بالا (مطلوبیت اجتماعی): فرد گرایش به آرمانی‌نمایی داشته؛
+                بر مصاحبه رفتاری و آزمون‌های عملکردی تکیه کنید.
               </li>
               <li>
                 در تعارض آزمون و مصاحبه: مصاحبه و مشاهده‌ی عملی را مقدم بدانید و علت اختلاف را
@@ -334,7 +375,7 @@ export const HelpView: React.FC = () => {
 
         <details className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c]">
           <summary className="cursor-pointer px-4 py-3 font-bold">
-            ۶) شرایط اجرا برای نتایج معتبر
+            ۷) شرایط اجرا برای نتایج معتبر
           </summary>
           <div className="px-4 pb-4 text-sm">
             <ul className="list-disc pr-5 space-y-1.5">
@@ -354,26 +395,27 @@ export const HelpView: React.FC = () => {
         </details>
 
         <details className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c]">
-          <summary className="cursor-pointer px-4 py-3 font-bold">۷) پرسش‌های متداول</summary>
+          <summary className="cursor-pointer px-4 py-3 font-bold">۸) پرسش‌های متداول و مراجع علمی</summary>
           <div className="px-4 pb-4 text-sm space-y-3">
             <p>
-              <b>آیا نمره‌ی پایین یعنی فرد مناسب نیست؟</b>
+              <b>آیا این آزمون‌ها استاندارد علمی دارند یا صرفاً اقتباس‌اند؟</b>
               <br />
-              خیر. نمره‌ها شاخص‌اند. تناسب فرد با شغل، آموزش و شرایط کار نیز مهم است.
+              تمامی پرسشنامه‌ها و آزمون‌های شناختی سامانه بر پایه ابزارهای استاندارد و داوری‌شده‌ی
+              دانشگاهی با دسترسی آزاد (Public Domain / Research Instruments) پیاده‌سازی شده‌اند:
+              O*NET Mini-IP (Rounds et al., 2010 / Holland 1997)، Mini-IPIP (Donnellan et al., 2006)،
+              DASS-21 (Lovibond & Lovibond, 1995؛ هنجار ایرانی صاحبی ۱۳۸۴)، Safety Behavior Scale
+              (Griffin & Neal, 2000)، Risk Propensity Scale (Meertens & Lion, 2008)، HEXACO-H
+              (Ashton & Lee, 2009)، Oldenburg Burnout Inventory (Demerouti et al., 2003)، Epworth
+              Sleepiness Scale (Johns, 1991)، PVT (Dinges & Powell, 1985)، Stroop (1935)، WAIS Digit
+              Span و Reitan Trail Making Test (1958).
             </p>
             <p>
-              <b>داده‌ها کجا ذخیره می‌شود و چگونه روی چند رایانه مشترک است؟</b>
+              <b>داده‌ها کجا ذخیره می‌شود (با گوگل و بدون گوگل)؟</b>
               <br />
-              اطلاعات در پایگاه داده ابری مشترک (Cloud Firestore) ذخیره می‌شود و به‌صورت زنده روی
-              تمام رایانه‌های مجاز همگام‌سازی می‌گردد. اگر از نسخه‌ی تک‌رایانه‌ی قبلی استفاده
-              می‌کردید، می‌توانید از بخش «تنظیمات و پشتیبان» داده‌های قبلی یا فایل پشتیبان JSON را
-              وارد پایگاه داده مشترک کنید.
-            </p>
-            <p>
-              <b>این آزمون‌ها با آزمون‌های معتبر معروف (مانند MMPI یا NEO) چه تفاوتی دارند؟</b>
-              <br />
-              آن آزمون‌ها حق‌نشر و صلاحیت تفسیر تخصصی دارند. این برنامه از ابزارهای آزاد و گویه‌های
-              اصل استفاده می‌کند و برای غربالگری و بحث در مصاحبه مناسب است، نه جایگزین آنها.
+              هنگام ورود با حساب گوگل، داده‌ها به‌صورت زنده در Cloud Firestore بین تمام رایانه‌ها
+              همگام می‌شود. هنگام ورود با کد ملی/پرسنلی یا نام کاربری مدیر (بدون نیاز به دسترسی
+              گوگل)، داده‌ها با امنیت کامل در پایگاه داده محلی دستگاه ذخیره و قابل پشتیبان‌گیری JSON
+              و Excel است.
             </p>
           </div>
         </details>

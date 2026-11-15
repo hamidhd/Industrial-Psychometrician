@@ -28,31 +28,46 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPass, setChangingPass] = useState(false);
 
-  // Load stored users from localStorage or initial master personnel
+  // Load stored users from localStorage and merge any newly added master personnel
   const getUsers = (): AppUser[] => {
+    const buildSeeded = (): AppUser[] =>
+      INITIAL_MASTER_PERSONNEL.map((p, idx) => ({
+        id: `u_${idx}_${p.personnelId}`,
+        personnelId: p.personnelId,
+        name: p.name,
+        nationalCode: p.nationalCode,
+        mobile: p.mobile,
+        dept: p.dept,
+        hireDate: p.hireDate,
+        role: p.role,
+        username: p.username || (p.role === 'admin' ? 'admin' : undefined),
+        passwordHash: p.password || p.nationalCode,
+        mustChangePassword: p.mustChangePassword ?? (p.role !== 'employee'),
+        hasResultAccess: p.hasResultAccess,
+      }));
+
     try {
       const raw = localStorage.getItem('rsi_app_users');
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingPids = new Set(parsed.map((u: AppUser) => u.personnelId));
+          const existingNids = new Set(parsed.map((u: AppUser) => u.nationalCode));
+          const additions = buildSeeded().filter(
+            (s) => !existingPids.has(s.personnelId) && !existingNids.has(s.nationalCode)
+          );
+          if (additions.length > 0) {
+            const merged = [...parsed, ...additions];
+            localStorage.setItem('rsi_app_users', JSON.stringify(merged));
+            return merged;
+          }
+          return parsed;
+        }
       }
     } catch {
       // fallback
     }
-    const seeded: AppUser[] = INITIAL_MASTER_PERSONNEL.map((p, idx) => ({
-      id: `u_${idx}_${p.personnelId}`,
-      personnelId: p.personnelId,
-      name: p.name,
-      nationalCode: p.nationalCode,
-      mobile: p.mobile,
-      dept: p.dept,
-      hireDate: p.hireDate,
-      role: p.role,
-      username: p.username || (p.role === 'admin' ? 'admin' : undefined),
-      passwordHash: p.password || p.nationalCode, // default temp password is national code or preset
-      mustChangePassword: p.mustChangePassword ?? (p.role !== 'employee'),
-      hasResultAccess: p.hasResultAccess,
-    }));
+    const seeded = buildSeeded();
     localStorage.setItem('rsi_app_users', JSON.stringify(seeded));
     return seeded;
   };
@@ -169,12 +184,12 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
 
   const handleGoogle = async () => {
     try {
-      await signInWithGoogle();
-      // If Google succeeds, map to an admin user
+      const cred = await signInWithGoogle();
+      const fbUser = cred.user;
       const adminUsr: AppUser = {
-        id: 'google_admin',
+        id: fbUser.uid,
         personnelId: '1000',
-        name: 'مدیر سیستم (گوگل)',
+        name: fbUser.displayName || fbUser.email || 'مدیر سیستم (گوگل)',
         nationalCode: '0000000000',
         mobile: '',
         dept: 'مدیریت',
@@ -183,9 +198,9 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
         hasResultAccess: true,
       };
       onLoginSuccess(adminUsr);
-      onToast('با موفقیت وارد شدید');
+      onToast('با موفقیت به پایگاه داده ابری متصل شدید');
     } catch {
-      onToast('خطا در ورود با گوگل');
+      onToast('امکان اتصال به حساب گوگل وجود ندارد؛ از ورود پرسنل یا مدیران استفاده کنید');
     }
   };
 

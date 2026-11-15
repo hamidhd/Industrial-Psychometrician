@@ -1,28 +1,56 @@
 import React, { useMemo, useState } from 'react';
 import type { User } from 'firebase/auth';
+import { PDF_MASTER_EMPLOYEES } from '../data/initialPersonnel';
 import { faDigits, KIND_LABEL } from '../data/tests';
 import {
+  getCategoryForDept,
+  normalizeFa,
+  OCCUPATIONAL_CATEGORIES,
+  PDF_WORK_UNITS,
+} from '../data/workUnits';
+import {
+  batchCreatePeople,
   createPerson,
   deletePersonAndResults,
   updatePerson,
 } from '../services/firestoreService';
-import type { Person, PersonKind, TestResult, Workspace } from '../types/psychometrics';
+import {
+  localBatchCreatePeople,
+  localCreatePerson,
+  localDeletePersonAndResults,
+  localUpdatePerson,
+} from '../services/localStoreService';
+import type {
+  OccupationalCategoryId,
+  Person,
+  PersonKind,
+  TestResult,
+  Workspace,
+} from '../types/psychometrics';
 
 interface Props {
-  user: User;
+  useCloud: boolean;
+  firebaseUser: User | null;
+  currentUserId: string;
   workspace: Workspace;
   people: Person[];
   results: TestResult[];
+  categoryFilter: '' | OccupationalCategoryId;
+  onChangeCategoryFilter: (cat: '' | OccupationalCategoryId) => void;
   onStartTestFor: (personId: string) => void;
   onViewResultsFor: (personId: string) => void;
   onToast: (msg: string) => void;
 }
 
 export const PeopleView: React.FC<Props> = ({
-  user,
+  useCloud,
+  firebaseUser,
+  currentUserId,
   workspace,
   people,
   results,
+  categoryFilter,
+  onChangeCategoryFilter,
   onStartTestFor,
   onViewResultsFor,
   onToast,
@@ -35,9 +63,12 @@ export const PeopleView: React.FC<Props> = ({
   const [age, setAge] = useState('');
   const [consent, setConsent] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [importingPdf, setImportingPdf] = useState(false);
 
   const [filterText, setFilterText] = useState('');
   const [kindFilter, setKindFilter] = useState<'' | PersonKind>('');
+  const [unitFilter, setUnitFilter] = useState('');
+  const [showAllRows, setShowAllRows] = useState(false);
 
   const [editing, setEditing] = useState<Person | null>(null);
   const [deleting, setDeleting] = useState<Person | null>(null);
@@ -49,14 +80,26 @@ export const PeopleView: React.FC<Props> = ({
     return map;
   }, [results]);
 
+  const unitsInActiveCategory = useMemo(() => {
+    if (!categoryFilter) return PDF_WORK_UNITS;
+    return PDF_WORK_UNITS.filter((u) => u.categoryId === categoryFilter);
+  }, [categoryFilter]);
+
   const filtered = useMemo(() => {
-    const q = filterText.trim();
+    const q = normalizeFa(filterText);
     return people.filter((p) => {
       if (kindFilter && p.kind !== kindFilter) return false;
+      if (categoryFilter) {
+        const cat = getCategoryForDept(p.dept);
+        if (!cat || cat.id !== categoryFilter) return false;
+      }
+      if (unitFilter && normalizeFa(p.dept) !== normalizeFa(unitFilter)) return false;
       if (!q) return true;
-      return `${p.name} ${p.code} ${p.dept} ${p.job}`.includes(q);
+      return normalizeFa(`${p.name} ${p.code} ${p.dept} ${p.job}`).includes(q);
     });
-  }, [people, filterText, kindFilter]);
+  }, [people, filterText, kindFilter, categoryFilter, unitFilter]);
+
+  const displayedRows = showAllRows ? filtered : filtered.slice(0, 60);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +110,7 @@ export const PeopleView: React.FC<Props> = ({
     if (!name.trim()) return;
     setSaving(true);
     try {
-      await createPerson(workspace, user, {
+      const input = {
         name: name.trim(),
         code: code.trim(),
         kind,
@@ -75,18 +118,53 @@ export const PeopleView: React.FC<Props> = ({
         job: job.trim(),
         age: age.trim(),
         consent: true,
-      });
+      };
+      if (useCloud && firebaseUser) {
+        await createPerson(workspace, firebaseUser, input);
+      } else {
+        localCreatePerson(workspace, currentUserId, input);
+      }
       setName('');
       setCode('');
       setDept('');
       setJob('');
       setAge('');
       setConsent(false);
-      onToast('فرد در پایگاه داده مشترک ذخیره شد');
+      onToast(useCloud ? 'فرد در پایگاه داده ابری ذخیره شد' : 'فرد با موفقیت ذخیره شد');
     } catch {
       onToast('خطا در ذخیره‌ی فرد');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleImportPdfRoster = async () => {
+    setImportingPdf(true);
+    try {
+      const items = PDF_MASTER_EMPLOYEES.map((emp) => ({
+        name: emp.name,
+        code: emp.personnelId || emp.nationalCode,
+        kind: 'employee' as PersonKind,
+        dept: emp.dept,
+        job: '',
+        age: '',
+      }));
+      let added = 0;
+      if (useCloud && firebaseUser) {
+        const existingCodes = new Set(people.map((p) => p.code.trim()).filter(Boolean));
+        added = await batchCreatePeople(workspace, firebaseUser, items, existingCodes);
+      } else {
+        added = localBatchCreatePeople(workspace, currentUserId, items);
+      }
+      if (added > 0) {
+        onToast(`${faDigits(added)} نفر از لیست پرسنل کارخانه وارد شد`);
+      } else {
+        onToast('همه‌ی پرسنل لیست PDF از قبل در سامانه ثبت شده‌اند');
+      }
+    } catch {
+      onToast('خطا در ورود دسته‌جمعی پرسنل');
+    } finally {
+      setImportingPdf(false);
     }
   };
 
@@ -95,14 +173,19 @@ export const PeopleView: React.FC<Props> = ({
     if (!editing || !editing.name.trim()) return;
     setBusyModal(true);
     try {
-      await updatePerson(workspace.id, editing.id, {
+      const input = {
         name: editing.name,
         code: editing.code,
         kind: editing.kind,
         dept: editing.dept,
         job: editing.job,
         age: editing.age,
-      });
+      };
+      if (useCloud && firebaseUser) {
+        await updatePerson(workspace.id, editing.id, input);
+      } else {
+        localUpdatePerson(workspace.id, editing.id, input);
+      }
       setEditing(null);
       onToast('اطلاعات ویرایش شد');
     } catch {
@@ -119,7 +202,11 @@ export const PeopleView: React.FC<Props> = ({
       const personResultIds = results
         .filter((r) => r.personId === deleting.id)
         .map((r) => r.id);
-      await deletePersonAndResults(workspace.id, deleting.id, personResultIds);
+      if (useCloud && firebaseUser) {
+        await deletePersonAndResults(workspace.id, deleting.id, personResultIds);
+      } else {
+        localDeletePersonAndResults(workspace.id, deleting.id);
+      }
       setDeleting(null);
       onToast('پرونده و نتایج حذف شد');
     } catch {
@@ -131,7 +218,25 @@ export const PeopleView: React.FC<Props> = ({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-extrabold">پرسنل و داوطلبان</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-extrabold">پرسنل و داوطلبان</h1>
+        <button
+          type="button"
+          disabled={importingPdf}
+          onClick={handleImportPdfRoster}
+          className="px-3.5 py-2 rounded-lg font-bold border border-[#0e6a88] text-[#0e6a88] dark:text-[#4fb4d4] hover:bg-[#dcedf3]/50 dark:hover:bg-[#17323d]/60 disabled:opacity-50 cursor-pointer text-xs whitespace-nowrap shrink-0"
+        >
+          {importingPdf
+            ? 'در حال بارگذاری…'
+            : `ورود خودکار پرسنل کارخانه از PDF (${faDigits(PDF_MASTER_EMPLOYEES.length)} نفر)`}
+        </button>
+      </div>
+
+      <datalist id="pdf-work-units">
+        {PDF_WORK_UNITS.map((u) => (
+          <option key={u.name} value={u.name} />
+        ))}
+      </datalist>
 
       <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5">
         <h2 className="text-lg font-bold mb-3">ثبت فرد جدید</h2>
@@ -178,11 +283,13 @@ export const PeopleView: React.FC<Props> = ({
           </div>
           <div>
             <label htmlFor="pd" className="block text-xs font-medium mb-1">
-              واحد / دپارتمان
+              واحد کاری (مطابق لیست کارخانه)
             </label>
             <input
               id="pd"
+              list="pdf-work-units"
               maxLength={100}
+              placeholder="مثلاً: تولید نورد سرد، اداری، برق…"
               value={dept}
               onChange={(e) => setDept(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
@@ -239,16 +346,45 @@ export const PeopleView: React.FC<Props> = ({
         </form>
       </div>
 
-      <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5">
-        <div className="flex flex-wrap items-center gap-3 mb-3">
-          <h2 className="text-lg font-bold">فهرست ({faDigits(filtered.length)})</h2>
+      <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5 space-y-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <h2 className="text-lg font-bold tabular-nums">فهرست ({faDigits(filtered.length)})</h2>
           <div className="flex-1" />
           <input
             placeholder="جستجو (نام، کد، واحد)"
             value={filterText}
             onChange={(e) => setFilterText(e.target.value)}
-            className="w-full sm:w-[220px] px-3 py-1.5 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+            className="w-full sm:w-[210px] px-3 py-1.5 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
           />
+          <select
+            aria-label="فیلتر رده شغلی"
+            value={categoryFilter}
+            onChange={(e) => {
+              onChangeCategoryFilter(e.target.value as '' | OccupationalCategoryId);
+              setUnitFilter('');
+            }}
+            className="px-2.5 py-1.5 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-xs font-medium"
+          >
+            <option value="">همه‌ی گروه‌های شغلی (۷ گروه)</option>
+            {OCCUPATIONAL_CATEGORIES.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.shortTitle} ({c.workSettingLabel})
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="فیلتر واحد کاری"
+            value={unitFilter}
+            onChange={(e) => setUnitFilter(e.target.value)}
+            className="px-2.5 py-1.5 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-xs font-medium max-w-[200px]"
+          >
+            <option value="">همه‌ی واحدهای کاری ({faDigits(unitsInActiveCategory.length)})</option>
+            {unitsInActiveCategory.map((u) => (
+              <option key={u.name} value={u.name}>
+                {u.name}
+              </option>
+            ))}
+          </select>
           <div className="flex items-center gap-1 p-1 rounded-lg bg-[#f4f6f7] dark:bg-[#222d36]">
             {[
               { id: '', label: 'همه' },
@@ -271,92 +407,113 @@ export const PeopleView: React.FC<Props> = ({
           </div>
         </div>
 
-        {filtered.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm min-w-[600px]">
-              <thead>
-                <tr className="bg-[#f4f6f7] dark:bg-[#222d36] text-[#5a6a78] dark:text-[#9aabb8]">
-                  <th className="text-right p-2.5 font-medium">نام</th>
-                  <th className="text-right p-2.5 font-medium">وضعیت</th>
-                  <th className="text-right p-2.5 font-medium">واحد / پست</th>
-                  <th className="text-right p-2.5 font-medium">آزمون‌ها</th>
-                  <th className="text-right p-2.5 font-medium">اقدامات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((p) => {
-                  const count = resultCounts.get(p.id) || 0;
-                  return (
-                    <tr
-                      key={p.id}
-                      className="border-b border-[#d5dce1] dark:border-[#33414d] align-top"
-                    >
-                      <td className="p-2.5">
-                        <div className="font-bold">{p.name}</div>
-                        {p.code && (
-                          <div className="text-xs text-[#5a6a78] dark:text-[#9aabb8] tabular-nums">
-                            {p.code}
+        {displayedRows.length > 0 ? (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm min-w-[600px]">
+                <thead>
+                  <tr className="bg-[#f4f6f7] dark:bg-[#222d36] text-[#5a6a78] dark:text-[#9aabb8]">
+                    <th className="text-right p-2.5 font-medium">نام</th>
+                    <th className="text-right p-2.5 font-medium">وضعیت</th>
+                    <th className="text-right p-2.5 font-medium">واحد کاری / رده شغلی</th>
+                    <th className="text-right p-2.5 font-medium">آزمون‌ها</th>
+                    <th className="text-right p-2.5 font-medium">اقدامات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayedRows.map((p) => {
+                    const count = resultCounts.get(p.id) || 0;
+                    const cat = getCategoryForDept(p.dept);
+                    return (
+                      <tr
+                        key={p.id}
+                        className="border-b border-[#d5dce1] dark:border-[#33414d] align-top"
+                      >
+                        <td className="p-2.5">
+                          <div className="font-bold">{p.name}</div>
+                          {p.code && (
+                            <div className="text-xs text-[#5a6a78] dark:text-[#9aabb8] tabular-nums">
+                              {p.code}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-2.5 text-xs whitespace-nowrap">
+                          <span
+                            className={
+                              p.kind === 'candidate'
+                                ? 'text-[#0e6a88] dark:text-[#4fb4d4] font-semibold'
+                                : 'text-[#5a6a78] dark:text-[#9aabb8]'
+                            }
+                          >
+                            {KIND_LABEL[p.kind]}
+                          </span>
+                        </td>
+                        <td className="p-2.5 text-xs">
+                          <div className="font-medium">{p.dept || '—'}</div>
+                          {(cat || p.job) && (
+                            <div className="text-[#5a6a78] dark:text-[#9aabb8]">
+                              {[cat?.workSettingLabel, p.job].filter(Boolean).join(' · ')}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-2.5 tabular-nums">{faDigits(count)}</td>
+                        <td className="p-2.5">
+                          <div className="flex flex-wrap gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => onStartTestFor(p.id)}
+                              className="px-2.5 py-1 text-xs rounded-md border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer whitespace-nowrap"
+                            >
+                              آزمون
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onViewResultsFor(p.id)}
+                              className="px-2.5 py-1 text-xs rounded-md border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer whitespace-nowrap"
+                            >
+                              نتایج
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditing({ ...p })}
+                              className="px-2.5 py-1 text-xs rounded-md border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer whitespace-nowrap"
+                            >
+                              ویرایش
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeleting(p)}
+                              className="px-2.5 py-1 text-xs rounded-md border border-[#b83232] text-[#b83232] dark:border-[#f07a7a] dark:text-[#f07a7a] cursor-pointer whitespace-nowrap"
+                            >
+                              حذف
+                            </button>
                           </div>
-                        )}
-                      </td>
-                      <td className="p-2.5 text-xs whitespace-nowrap">
-                        <span
-                          className={
-                            p.kind === 'candidate'
-                              ? 'text-[#0e6a88] dark:text-[#4fb4d4] font-semibold'
-                              : 'text-[#5a6a78] dark:text-[#9aabb8]'
-                          }
-                        >
-                          {KIND_LABEL[p.kind]}
-                        </span>
-                      </td>
-                      <td className="p-2.5 text-xs">
-                        <div>{p.dept || '—'}</div>
-                        {p.job && (
-                          <div className="text-[#5a6a78] dark:text-[#9aabb8]">{p.job}</div>
-                        )}
-                      </td>
-                      <td className="p-2.5 tabular-nums">{faDigits(count)}</td>
-                      <td className="p-2.5">
-                        <div className="flex flex-wrap gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => onStartTestFor(p.id)}
-                            className="px-2.5 py-1 text-xs rounded-md border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer whitespace-nowrap"
-                          >
-                            آزمون
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onViewResultsFor(p.id)}
-                            className="px-2.5 py-1 text-xs rounded-md border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer whitespace-nowrap"
-                          >
-                            نتایج
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditing({ ...p })}
-                            className="px-2.5 py-1 text-xs rounded-md border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer whitespace-nowrap"
-                          >
-                            ویرایش
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeleting(p)}
-                            className="px-2.5 py-1 text-xs rounded-md border border-[#b83232] text-[#b83232] dark:border-[#f07a7a] dark:text-[#f07a7a] cursor-pointer whitespace-nowrap"
-                          >
-                            حذف
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {filtered.length > 60 && (
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowAllRows((s) => !s)}
+                  className="px-4 py-1.5 rounded-lg border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] text-xs font-bold cursor-pointer"
+                >
+                  {showAllRows
+                    ? 'نمایش کمتر (۶۰ ردیف اول)'
+                    : `نمایش همه‌ی ${faDigits(filtered.length)} فرد`}
+                </button>
+              </div>
+            )}
+          </>
         ) : (
-          <p className="text-sm text-[#5a6a78] dark:text-[#9aabb8]">فردی یافت نشد.</p>
+          <p className="text-sm text-[#5a6a78] dark:text-[#9aabb8]">
+            فردی با این فیلتر یافت نشد. می‌توانید فرد جدید ثبت کنید یا دکمه‌ی «ورود خودکار پرسنل
+            کارخانه از PDF» را بزنید.
+          </p>
         )}
       </div>
 
@@ -411,8 +568,9 @@ export const PeopleView: React.FC<Props> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1">واحد</label>
+                <label className="block text-xs font-medium mb-1">واحد کاری</label>
                 <input
+                  list="pdf-work-units"
                   maxLength={100}
                   value={editing.dept}
                   onChange={(e) => setEditing({ ...editing, dept: e.target.value })}
@@ -455,7 +613,7 @@ export const PeopleView: React.FC<Props> = ({
           <div className="bg-white dark:bg-[#1b242c] border border-[#d5dce1] dark:border-[#33414d] rounded-xl max-w-md w-full p-6 space-y-4">
             <h2 className="text-lg font-bold">حذف {deleting.name}</h2>
             <p className="text-sm">
-              تمام نتایج این فرد از پایگاه داده مشترک حذف می‌شود و قابل بازگشت نیست.
+              تمام نتایج این فرد از پایگاه داده حذف می‌شود و قابل بازگشت نیست.
             </p>
             <div className="flex gap-2">
               <button

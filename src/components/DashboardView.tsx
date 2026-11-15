@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ALL_TESTS, faDigits, jdate, jdt, testById } from '../data/tests';
-import type { Person, TestResult, ViewName } from '../types/psychometrics';
+import { getCategoryForDept, OCCUPATIONAL_CATEGORIES, PDF_WORK_UNITS } from '../data/workUnits';
+import type { OccupationalCategoryId, Person, TestResult, ViewName } from '../types/psychometrics';
 
 interface Props {
   people: Person[];
   results: TestResult[];
   computerLabel: string;
+  useCloud: boolean;
   onNavigate: (view: ViewName) => void;
+  onOpenCategory: (catId: OccupationalCategoryId) => void;
   onOpenPersonResults: (personId: string) => void;
 }
 
@@ -14,7 +17,9 @@ export const DashboardView: React.FC<Props> = ({
   people,
   results,
   computerLabel,
+  useCloud,
   onNavigate,
+  onOpenCategory,
   onOpenPersonResults,
 }) => {
   const personMap = new Map(people.map((p) => [p.id, p]));
@@ -25,21 +30,39 @@ export const DashboardView: React.FC<Props> = ({
 
   const recent = results.filter((r) => personMap.has(r.personId)).slice(0, 8);
 
+  const categoryStats = useMemo(() => {
+    const peopleCount: Record<string, number> = {};
+    const riasecCount: Record<string, number> = {};
+    const peopleWithRiasec = new Set(
+      results.filter((r) => r.testId === 'riasec').map((r) => r.personId)
+    );
+    people.forEach((p) => {
+      const cat = getCategoryForDept(p.dept);
+      if (cat) {
+        peopleCount[cat.id] = (peopleCount[cat.id] || 0) + 1;
+        if (peopleWithRiasec.has(p.id)) {
+          riasecCount[cat.id] = (riasecCount[cat.id] || 0) + 1;
+        }
+      }
+    });
+    return { peopleCount, riasecCount };
+  }, [people, results]);
+
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-extrabold mb-1">داشبورد</h1>
         <p className="text-sm text-[#5a6a78] dark:text-[#9aabb8]">
-          مجموعه‌ی آزمون‌های روان‌شناختی برای استخدام و پایش کارکنان صنعتی · متصل به پایگاه داده
-          مشترک ({computerLabel})
+          سامانه روان‌سنجی استاندارد و جایابی شغلی بر اساس واحدهای کاری کارخانه ·{' '}
+          {useCloud ? 'متصل به پایگاه داده ابری' : 'حالت محلی / آفلاین'} ({computerLabel})
         </p>
       </div>
 
       <div className="rounded-[10px] px-4 py-3 bg-[#dcedf3] dark:bg-[#17323d] border border-[#0e6a88] text-sm">
         <b className="block mb-0.5">نکته‌ی مهم</b>
-        نتایج این برنامه «غربالگری و کمک‌تصمیم» است، نه تشخیص بالینی و نه تنها مبنای رد یا اخراج.
-        تفسیر نهایی باید توسط روان‌شناس یا کارشناس مجاز و همراه با مصاحبه و سوابق انجام شود. پیش از
-        آزمون، رضایت و محرمانگی را برای فرد توضیح دهید.
+        نتایج این برنامه بر پایه آزمون‌های استاندارد علمی (O*NET RIASEC، Mini-IPIP، DASS-21،
+        OLBI، اپورث و HEXACO-H) بوده و ابزار غربالگری و کمک‌تصمیم است. تفسیر نهایی باید همراه با
+        مصاحبه و سوابق انجام شود.
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -64,10 +87,63 @@ export const DashboardView: React.FC<Props> = ({
           </div>
         </div>
         <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-4">
-          <div className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">تعداد آزمون‌های موجود</div>
+          <div className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">ابزارهای علمی / واحدها</div>
           <div className="text-3xl font-extrabold mt-1 tabular-nums">
-            {faDigits(ALL_TESTS.length)}
+            {faDigits(ALL_TESTS.length)} / {faDigits(PDF_WORK_UNITS.length)}
           </div>
+        </div>
+      </div>
+
+      {/* Occupational Categories & Work Units (from PDF) */}
+      <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5 space-y-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-bold">دسته‌بندی بر اساس واحدهای کاری (۳۵ واحد کارخانه)</h2>
+            <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
+              برای مشاهده پرسنل هر رده‌ی شغلی (پشت‌میزی، میدانی، فنی، آزمایشگاهی) روی آن کلیک کنید.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigate('people')}
+            className="text-xs font-bold text-[#0e6a88] dark:text-[#4fb4d4] hover:underline cursor-pointer whitespace-nowrap"
+          >
+            مدیریت فهرست پرسنل ←
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {OCCUPATIONAL_CATEGORIES.map((cat) => {
+            const unitsInCat = PDF_WORK_UNITS.filter((u) => u.categoryId === cat.id);
+            const count = categoryStats.peopleCount[cat.id] || 0;
+            const placed = categoryStats.riasecCount[cat.id] || 0;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => onOpenCategory(cat.id)}
+                className="text-right rounded-lg border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] bg-[#f4f6f7]/50 dark:bg-[#222d36]/40 p-3.5 transition-colors cursor-pointer flex flex-col justify-between gap-2"
+              >
+                <div>
+                  <div className="font-bold text-sm text-[#1b2733] dark:text-[#e6ecf0]">
+                    {cat.shortTitle}
+                  </div>
+                  <div className="text-[11px] font-semibold text-[#0e6a88] dark:text-[#4fb4d4] mt-0.5">
+                    {cat.workSettingLabel} · {faDigits(unitsInCat.length)} واحد کاری
+                  </div>
+                  <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8] mt-1.5 line-clamp-2 leading-5">
+                    {unitsInCat.map((u) => u.name).join('، ')}
+                  </p>
+                </div>
+                <div className="pt-2 border-t border-[#d5dce1] dark:border-[#33414d] flex items-center justify-between text-xs tabular-nums">
+                  <span>ثبت‌شده: {faDigits(count)} نفر</span>
+                  <span className="text-[#5a6a78] dark:text-[#9aabb8]">
+                    ارزیابی تناسب: {faDigits(placed)}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -116,14 +192,14 @@ export const DashboardView: React.FC<Props> = ({
             onClick={() => onNavigate('run')}
             className="px-4 py-2 rounded-lg font-bold border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer text-sm whitespace-nowrap"
           >
-            اجرای آزمون
+            اجرای آزمون / تعیین واحد کاری
           </button>
           <button
             type="button"
             onClick={() => onNavigate('help')}
             className="px-4 py-2 rounded-lg font-bold border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer text-sm whitespace-nowrap"
           >
-            راهنمای آزمون‌ها
+            راهنما و نقشه واحدها
           </button>
         </div>
       </div>

@@ -9,10 +9,19 @@ import {
   updateWorkspaceMeta,
   wipeWorkspaceData,
 } from '../services/firestoreService';
+import {
+  localCreateWorkspace,
+  localImportBackup,
+  localUpdateWorkspaceMeta,
+  localWipeWorkspace,
+} from '../services/localStoreService';
 import type { Person, TestResult, Workspace } from '../types/psychometrics';
 
 interface Props {
-  user: User;
+  useCloud: boolean;
+  firebaseUser: User | null;
+  currentUserId: string;
+  currentUserName: string;
   workspaces: Workspace[];
   activeWorkspace: Workspace;
   onSelectWorkspace: (id: string) => void;
@@ -35,7 +44,10 @@ function downloadFile(name: string, content: string, mime: string) {
 }
 
 export const SettingsView: React.FC<Props> = ({
-  user,
+  useCloud,
+  firebaseUser,
+  currentUserId,
+  currentUserName,
   workspaces,
   activeWorkspace,
   onSelectWorkspace,
@@ -62,7 +74,7 @@ export const SettingsView: React.FC<Props> = ({
   const [wipeConfirm, setWipeConfirm] = useState(false);
   const [busyAction, setBusyAction] = useState(false);
 
-  const isOwner = activeWorkspace.ownerId === user.uid;
+  const isOwner = Boolean(useCloud && firebaseUser && activeWorkspace.ownerId === firebaseUser.uid);
 
   const legacyLocalData = useMemo(() => {
     try {
@@ -82,7 +94,11 @@ export const SettingsView: React.FC<Props> = ({
     e.preventDefault();
     setSavingMeta(true);
     try {
-      await updateWorkspaceMeta(activeWorkspace.id, org, examiner);
+      if (useCloud && firebaseUser) {
+        await updateWorkspaceMeta(activeWorkspace.id, org, examiner);
+      } else {
+        localUpdateWorkspaceMeta(activeWorkspace.id, org, examiner);
+      }
       onChangeComputerLabel(stationInput.trim() || 'رایانه مشترک');
       onToast('تنظیمات ذخیره شد');
     } catch {
@@ -94,6 +110,10 @@ export const SettingsView: React.FC<Props> = ({
 
   const handleAddEmail = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!useCloud || !firebaseUser) {
+      onToast('اشتراک‌گذاری ابری فقط در حالت ورود با حساب گوگل فعال است');
+      return;
+    }
     const clean = newEmail.trim().toLowerCase();
     if (!clean || !clean.includes('@')) {
       onToast('ایمیل معتبر وارد کنید');
@@ -125,6 +145,7 @@ export const SettingsView: React.FC<Props> = ({
   };
 
   const handleRemoveEmail = async (emailToRemove: string) => {
+    if (!useCloud || !firebaseUser) return;
     if (emailToRemove === activeWorkspace.ownerEmail) return;
     setSavingEmails(true);
     try {
@@ -147,7 +168,10 @@ export const SettingsView: React.FC<Props> = ({
     if (!newWsOrg.trim()) return;
     setCreatingWs(true);
     try {
-      const id = await createWorkspace(user, newWsOrg.trim(), examiner);
+      const id =
+        useCloud && firebaseUser
+          ? await createWorkspace(firebaseUser, newWsOrg.trim(), examiner)
+          : localCreateWorkspace(newWsOrg.trim(), examiner, currentUserName);
       onSelectWorkspace(id);
       setNewWsOrg('');
       onToast('پایگاه داده جدید ایجاد شد');
@@ -232,18 +256,27 @@ export const SettingsView: React.FC<Props> = ({
     if (!restoreDialog) return;
     setBusyAction(true);
     try {
-      const stats = await importBackupToWorkspace(
-        activeWorkspace,
-        user,
-        stationInput.trim() || 'رایانه مشترک',
-        restoreDialog,
-        mode,
-        people,
-        results
-      );
+      const stats =
+        useCloud && firebaseUser
+          ? await importBackupToWorkspace(
+              activeWorkspace,
+              firebaseUser,
+              stationInput.trim() || 'رایانه مشترک',
+              restoreDialog,
+              mode,
+              people,
+              results
+            )
+          : localImportBackup(
+              activeWorkspace,
+              currentUserId,
+              stationInput.trim() || 'ایستگاه محلی',
+              restoreDialog,
+              mode
+            );
       setRestoreDialog(null);
       onToast(
-        `${faDigits(stats.importedPeople)} فرد و ${faDigits(stats.importedResults)} نتیجه وارد پایگاه داده مشترک شد`
+        `${faDigits(stats.importedPeople)} فرد و ${faDigits(stats.importedResults)} نتیجه وارد شد`
       );
     } catch {
       onToast('خطا در بازیابی پشتیبان');
@@ -255,11 +288,15 @@ export const SettingsView: React.FC<Props> = ({
   const executeWipe = async () => {
     setBusyAction(true);
     try {
-      await wipeWorkspaceData(
-        activeWorkspace.id,
-        people.map((p) => p.id),
-        results.map((r) => r.id)
-      );
+      if (useCloud && firebaseUser) {
+        await wipeWorkspaceData(
+          activeWorkspace.id,
+          people.map((p) => p.id),
+          results.map((r) => r.id)
+        );
+      } else {
+        localWipeWorkspace(activeWorkspace.id);
+      }
       setWipeConfirm(false);
       onToast('همه‌ی داده‌های این پایگاه داده حذف شد');
     } catch {
@@ -335,63 +372,74 @@ export const SettingsView: React.FC<Props> = ({
       {/* اشتراک‌گذاری بین چند رایانه */}
       <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5 space-y-4">
         <div>
-          <h2 className="text-lg font-bold">اتصال چند رایانه به پایگاه داده مشترک</h2>
-          <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8] mt-1 leading-6">
-            دو روش برای استفاده در چند رایانه وجود دارد: ۱) روی تمام رایانه‌ها با همین حساب گوگل (
-            <span className="num-ltr font-semibold">{activeWorkspace.ownerEmail}</span>) وارد شوید.
-            ۲) اگر همکاران روی رایانه‌های دیگر حساب گوگل جداگانه دارند، ایمیل گوگل آنها را در زیر
-            اضافه کنید تا هم‌زمان به همین پایگاه داده دسترسی داشته باشند.
-          </p>
+          <h2 className="text-lg font-bold">اتصال چند رایانه و همگام‌سازی ابری</h2>
+          {useCloud ? (
+            <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8] mt-1 leading-6">
+              حساب گوگل شما متصل است. روی تمام رایانه‌ها با همین حساب گوگل (
+              <span className="num-ltr font-semibold">{activeWorkspace.ownerEmail}</span>) وارد شوید
+              یا ایمیل همکاران را در زیر اضافه کنید تا هم‌زمان به همین پایگاه داده دسترسی داشته باشند.
+            </p>
+          ) : (
+            <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8] mt-1 leading-6">
+              شما در حال حاضر با نام کاربری محلی یا کد پرسنلی وارد شده‌اید؛ داده‌ها روی همین دستگاه
+              ذخیره می‌شوند. برای انتقال اطلاعات بین چند رایانه بدون اینترنت/گوگل، از بخش «پشتیبان‌گیری
+              و خروجی JSON» در پایین صفحه استفاده کنید.
+            </p>
+          )}
         </div>
 
-        <div className="border-t border-[#d5dce1] dark:border-[#33414d] pt-3">
-          <div className="text-xs font-bold mb-2">حساب‌های مجاز به این پایگاه داده:</div>
-          <ul className="divide-y divide-[#d5dce1] dark:divide-[#33414d] border border-[#d5dce1] dark:border-[#33414d] rounded-lg">
-            {activeWorkspace.allowedEmails.map((em) => (
-              <li key={em} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="num-ltr truncate">{em}</span>
-                  <span className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
-                    {em === activeWorkspace.ownerEmail ? '· مالک' : '· همکار مجاز'}
-                  </span>
-                </div>
-                {isOwner && em !== activeWorkspace.ownerEmail && (
-                  <button
-                    type="button"
-                    disabled={savingEmails}
-                    onClick={() => handleRemoveEmail(em)}
-                    className="px-2.5 py-1 text-xs rounded border border-[#b83232] text-[#b83232] dark:text-[#f07a7a] dark:border-[#f07a7a] cursor-pointer whitespace-nowrap"
-                  >
-                    لغو دسترسی
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
+        {useCloud && (
+          <>
+            <div className="border-t border-[#d5dce1] dark:border-[#33414d] pt-3">
+              <div className="text-xs font-bold mb-2">حساب‌های مجاز به این پایگاه داده:</div>
+              <ul className="divide-y divide-[#d5dce1] dark:divide-[#33414d] border border-[#d5dce1] dark:border-[#33414d] rounded-lg">
+                {activeWorkspace.allowedEmails.map((em) => (
+                  <li key={em} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="num-ltr truncate">{em}</span>
+                      <span className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
+                        {em === activeWorkspace.ownerEmail ? '· مالک' : '· همکار مجاز'}
+                      </span>
+                    </div>
+                    {isOwner && em !== activeWorkspace.ownerEmail && (
+                      <button
+                        type="button"
+                        disabled={savingEmails}
+                        onClick={() => handleRemoveEmail(em)}
+                        className="px-2.5 py-1 text-xs rounded border border-[#b83232] text-[#b83232] dark:text-[#f07a7a] dark:border-[#f07a7a] cursor-pointer whitespace-nowrap"
+                      >
+                        لغو دسترسی
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-        {isOwner ? (
-          <form onSubmit={handleAddEmail} className="flex flex-wrap gap-2">
-            <input
-              type="email"
-              dir="ltr"
-              placeholder="colleague@gmail.com"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              className="flex-1 min-w-[220px] px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
-            />
-            <button
-              type="submit"
-              disabled={savingEmails}
-              className="px-4 py-2 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-90 disabled:opacity-50 cursor-pointer text-sm whitespace-nowrap"
-            >
-              {savingEmails ? 'در حال همگام‌سازی…' : '+ افزودن رایانه / همکار'}
-            </button>
-          </form>
-        ) : (
-          <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
-            فقط مالک پایگاه داده می‌تواند ایمیل همکاران جدید را اضافه یا حذف کند.
-          </p>
+            {isOwner ? (
+              <form onSubmit={handleAddEmail} className="flex flex-wrap gap-2">
+                <input
+                  type="email"
+                  dir="ltr"
+                  placeholder="colleague@gmail.com"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="flex-1 min-w-[220px] px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+                />
+                <button
+                  type="submit"
+                  disabled={savingEmails}
+                  className="px-4 py-2 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-90 disabled:opacity-50 cursor-pointer text-sm whitespace-nowrap"
+                >
+                  {savingEmails ? 'در حال همگام‌سازی…' : '+ افزودن رایانه / همکار'}
+                </button>
+              </form>
+            ) : (
+              <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
+                فقط مالک پایگاه داده می‌تواند ایمیل همکاران جدید را اضافه یا حذف کند.
+              </p>
+            )}
+          </>
         )}
       </div>
 

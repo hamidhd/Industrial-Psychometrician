@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { faDigits, jdate, KIND_LABEL, testById } from '../data/tests';
 import type { Person, TestResult, Workspace } from '../types/psychometrics';
 import { DimensionRow, FlagBanner } from './DimensionDisplay';
+import { PlacementPanel } from './PlacementPanel';
 
 interface Props {
   person: Person;
@@ -32,6 +33,9 @@ export const ReportModal: React.FC<Props> = ({
     }, 50);
   };
 
+  const riasecResult = latestResults.find((r) => r.testId === 'riasec');
+  const ipipResult = latestResults.find((r) => r.testId === 'ipip');
+
   return (
     <div
       className="fixed inset-0 z-50 bg-black/60 overflow-auto p-4 print:static print:bg-transparent print:p-0"
@@ -59,7 +63,7 @@ export const ReportModal: React.FC<Props> = ({
 
         <div>
           <div className="border-b-[3px] border-[#0e6a88] pb-2 mb-4">
-            <h1 className="text-2xl font-extrabold m-0">گزارش ارزیابی روان‌شناختی شغلی</h1>
+            <h1 className="text-2xl font-extrabold m-0">گزارش ارزیابی روان‌شناختی و جایابی شغلی</h1>
             <div className="text-sm text-[#5a6a78] dark:text-[#9aabb8]">
               {workspace.org ? `${workspace.org} · ` : ''}تاریخ گزارش: {jdate(Date.now())}
             </div>
@@ -101,6 +105,17 @@ export const ReportModal: React.FC<Props> = ({
               </tr>
             </tbody>
           </table>
+
+          {riasecResult && (
+            <div className="mb-4">
+              <PlacementPanel
+                riasecResult={riasecResult}
+                ipipResult={ipipResult}
+                currentDept={person.dept}
+                compact
+              />
+            </div>
+          )}
 
           <h2 className="text-lg font-bold mt-4 mb-2">خلاصه</h2>
           {attentionItems.length > 0 ? (
