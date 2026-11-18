@@ -52,9 +52,8 @@ export const RunTestView: React.FC<Props> = ({
 
   if (people.length === 0) {
     return (
-      <div className="space-y-4">
-        <h1 className="text-2xl font-extrabold">اجرای آزمون</h1>
-        <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5 space-y-3">
+      <div className="space-y-5">
+        <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-6 space-y-3">
           <p className="text-sm">
             {canSelectAnyPerson
               ? 'ابتدا باید فردی ثبت شود یا لیست پرسنل سازمان را از اکسل/CSV وارد کنید.'
@@ -64,7 +63,7 @@ export const RunTestView: React.FC<Props> = ({
             <button
               type="button"
               onClick={onGoPeople}
-              className="px-4 py-2 rounded-lg font-bold bg-[#0e6a88] text-white text-sm cursor-pointer"
+              className="px-4 py-2 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] shadow-[0_4px_12px_var(--accent-soft)] text-sm cursor-pointer whitespace-nowrap"
             >
               رفتن به پرسنل و داوطلبان
             </button>
@@ -127,11 +126,11 @@ export const RunTestView: React.FC<Props> = ({
 
     return (
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm font-bold text-[#0e6a88] dark:text-[#4fb4d4]">
+        <div className="flex flex-wrap items-center gap-3 pb-3 border-b border-[var(--ink-faint)]">
+          <span className="text-sm font-extrabold text-[var(--accent)]">
             {activePerson.name}
           </span>
-          <span className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
+          <span className="text-xs text-[var(--ink-muted)]">
             · آزمون {faDigits(queueIdx + 1)} از {faDigits(queue.length)} · {computerLabel}
           </span>
           <div className="flex-1" />
@@ -142,29 +141,29 @@ export const RunTestView: React.FC<Props> = ({
               setQueueIdx(0);
               setStepState('intro');
             }}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold border border-[#b83232] text-[#b83232] dark:border-[#f07a7a] dark:text-[#f07a7a] cursor-pointer whitespace-nowrap"
+            className="px-3 py-1.5 rounded-lg text-xs font-bold border border-[#dc2626]/40 text-[#dc2626] dark:border-[#f87171]/40 dark:text-[#f87171] hover:bg-[#dc2626]/10 cursor-pointer whitespace-nowrap"
           >
             توقف و خروج
           </button>
         </div>
 
-        <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5">
-          <h2 className="text-lg font-bold mb-3">{currentTest.title}</h2>
+        <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6">
+          <h2 className="text-xl font-extrabold mb-3">{currentTest.title}</h2>
 
           {savingResult ? (
-            <div className="py-12 text-center text-sm text-[#5a6a78] dark:text-[#9aabb8]">
+            <div className="py-12 text-center text-sm text-[var(--ink-muted)]">
               در حال ثبت نتیجه در پایگاه داده…
             </div>
           ) : stepState === 'intro' ? (
             <div className="space-y-3">
               <p className="text-sm leading-7">{currentTest.intro}</p>
-              <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
+              <p className="text-xs text-[var(--ink-muted)]">
                 زمان تقریبی: {faDigits(currentTest.minutes)} دقیقه
               </p>
               <button
                 type="button"
                 onClick={() => setStepState('active')}
-                className="px-5 py-2 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-90 cursor-pointer text-sm"
+                className="px-5 py-2.5 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] shadow-[0_4px_12px_var(--accent-soft)] hover:opacity-90 cursor-pointer text-sm"
               >
                 شروع
               </button>
@@ -180,7 +179,7 @@ export const RunTestView: React.FC<Props> = ({
                   setQueueIdx((i) => i + 1);
                   setStepState('intro');
                 }}
-                className="px-5 py-2 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-90 cursor-pointer text-sm"
+                className="px-5 py-2.5 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] shadow-[0_4px_12px_var(--accent-soft)] hover:opacity-90 cursor-pointer text-sm"
               >
                 ادامه
               </button>
@@ -211,16 +210,14 @@ export const RunTestView: React.FC<Props> = ({
   const totalMinutes = orderedSelected.reduce((sum, id) => sum + testById(id).minutes, 0);
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-extrabold">اجرای آزمون</h1>
-
-      <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5 space-y-2.5">
-        <h2 className="text-lg font-bold">۱) فرد مورد ارزیابی</h2>
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6 space-y-3">
+        <h2 className="text-lg font-extrabold">۱) فرد مورد ارزیابی</h2>
         {canSelectAnyPerson ? (
           <select
             value={activePerson.id}
             onChange={(e) => onSelectPerson(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+            className="w-full px-3 py-2.5 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm"
           >
             {people.map((p) => (
               <option key={p.id} value={p.id}>
@@ -239,7 +236,7 @@ export const RunTestView: React.FC<Props> = ({
         )}
 
         {deptCat && (
-          <div className="rounded-lg p-3 bg-[#dcedf3]/60 dark:bg-[#17323d]/60 border border-[#0e6a88]/40 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="rounded-xl p-3.5 bg-[var(--accent-soft)] border border-[var(--accent)]/50 flex flex-wrap items-center justify-between gap-2 text-xs">
             <span>
               واحد کاری فعلی (<b>{activePerson.dept}</b>) در گروه «{deptCat.shortTitle}» (
               {deptCat.workSettingLabel}) قرار دارد.
@@ -250,7 +247,7 @@ export const RunTestView: React.FC<Props> = ({
                 setCheckedIds(deptCat.recommendedTests);
                 onToast(`بسته‌ی تخصصی «${deptCat.shortTitle}» انتخاب شد`);
               }}
-              className="px-3 py-1.5 rounded-md font-bold bg-[#0e6a88] text-white cursor-pointer whitespace-nowrap"
+              className="px-3.5 py-1.5 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] cursor-pointer whitespace-nowrap"
             >
               انتخاب بسته‌ی پیشنهادی این واحد
             </button>
@@ -258,16 +255,16 @@ export const RunTestView: React.FC<Props> = ({
         )}
       </div>
 
-      <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5 space-y-3">
+      <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6 space-y-4">
         <div>
-          <h2 className="text-lg font-bold">۲) بسته‌های شغلی و آزمون‌های علمی</h2>
-          <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
+          <h2 className="text-lg font-extrabold">۲) بسته‌های شغلی و آزمون‌های علمی</h2>
+          <p className="text-xs text-[var(--ink-muted)] mt-0.5 leading-6">
             برای تعیین مستقیم اینکه فرد مناسب کار پشت‌میزی، میدانی، فنی یا کدام یک از واحدهای
             کاری سازمان است، بسته‌ی اول («تعیین واحد کاری») را انتخاب کنید.
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {BATTERIES.map((b) => {
             const isPlacement = b.id === 'placement';
             const isMatchedDept = deptCat && b.categoryId === deptCat.id;
@@ -280,12 +277,12 @@ export const RunTestView: React.FC<Props> = ({
                   setCheckedIds(b.tests);
                   onToast(b.note);
                 }}
-                className={`px-3 py-1.5 text-xs rounded-lg border cursor-pointer whitespace-nowrap transition-colors ${
+                className={`px-3.5 py-1.5 text-xs rounded-lg border cursor-pointer whitespace-nowrap transition-colors ${
                   isPlacement
-                    ? 'border-[#0e6a88] bg-[#dcedf3]/70 dark:bg-[#17323d] font-bold text-[#0e6a88] dark:text-[#4fb4d4]'
+                    ? 'border-[var(--accent)] bg-[var(--accent-soft)] font-bold text-[var(--accent)]'
                     : isMatchedDept
-                    ? 'border-[#23804f] dark:border-[#5cc78d] font-bold'
-                    : 'border-[#d5dce1] dark:border-[#33414d] font-medium hover:border-[#0e6a88]'
+                    ? 'border-[#16a34a]/60 dark:border-[#4ade80]/60 text-[#15803d] dark:text-[#4ade80] font-bold'
+                    : 'border-[var(--ink-faint)] bg-[var(--ink-faint)] font-medium hover:border-[var(--accent)]/40'
                 }`}
               >
                 {b.name}
@@ -300,21 +297,21 @@ export const RunTestView: React.FC<Props> = ({
             return (
               <label
                 key={t.id}
-                className={`rounded-lg border p-3.5 cursor-pointer flex items-start gap-2.5 transition-colors ${
+                className={`rounded-xl border p-3.5 cursor-pointer flex items-start gap-2.5 transition-colors ${
                   checked
-                    ? 'border-[#0e6a88] bg-[#dcedf3]/40 dark:bg-[#17323d]/60'
-                    : 'border-[#d5dce1] dark:border-[#33414d] bg-[#f4f6f7]/40 dark:bg-[#222d36]/40 hover:border-[#0e6a88]'
+                    ? 'border-[var(--accent)] bg-[var(--accent-soft)]'
+                    : 'border-[var(--ink-faint)] bg-[var(--bg)] hover:border-[var(--accent)]/40'
                 }`}
               >
                 <input
                   type="checkbox"
                   checked={checked}
                   onChange={() => toggleTest(t.id)}
-                  className="w-4 h-4 mt-1 accent-[#0e6a88]"
+                  className="w-4 h-4 mt-1 accent-[var(--accent)]"
                 />
                 <span className="text-sm">
                   <b className="block">{t.title}</b>
-                  <span className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
+                  <span className="text-xs text-[var(--ink-muted)]">
                     {t.type === 'q' ? 'پرسشنامه' : 'آزمون عملکردی'} · حدود {faDigits(t.minutes)}{' '}
                     دقیقه
                   </span>
@@ -324,7 +321,7 @@ export const RunTestView: React.FC<Props> = ({
           })}
         </div>
 
-        <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8] tabular-nums">
+        <p className="text-xs text-[var(--ink-muted)] tabular-nums">
           {orderedSelected.length > 0
             ? `${faDigits(orderedSelected.length)} آزمون انتخاب شد — زمان تقریبی: ${faDigits(
                 totalMinutes
@@ -333,9 +330,9 @@ export const RunTestView: React.FC<Props> = ({
         </p>
       </div>
 
-      <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5 space-y-3">
-        <h2 className="text-lg font-bold">۳) آماده‌سازی</h2>
-        <ul className="list-disc pr-5 text-xs space-y-1 text-[#5a6a78] dark:text-[#9aabb8]">
+      <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6 space-y-3">
+        <h2 className="text-lg font-extrabold">۳) آماده‌سازی</h2>
+        <ul className="list-disc pr-5 text-xs space-y-1 text-[var(--ink-muted)]">
           <li>محیط ساکت، بدون حضور همکاران؛ گوشی‌ها خاموش.</li>
           <li>
             برای آزمون‌های عملکردی از همان دستگاه و ترجیحاً در صبح (پیش از خستگی) استفاده کنید.
@@ -354,7 +351,7 @@ export const RunTestView: React.FC<Props> = ({
             setQueueIdx(0);
             setStepState('intro');
           }}
-          className="px-5 py-2.5 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-90 cursor-pointer text-sm"
+          className="px-5 py-2.5 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] shadow-[0_4px_12px_var(--accent-soft)] hover:opacity-90 cursor-pointer text-sm whitespace-nowrap"
         >
           شروع آزمون‌ها
         </button>

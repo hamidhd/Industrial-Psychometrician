@@ -10,10 +10,10 @@ function BandsTable({ test }: { test: AnyTestDef }) {
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm min-w-[520px]">
           <thead>
-            <tr className="bg-[#f4f6f7] dark:bg-[#222d36] text-[#5a6a78] dark:text-[#9aabb8]">
-              <th className="text-right p-2.5 font-medium">مقیاس</th>
-              <th className="text-right p-2.5 font-medium">سطح (بازه‌ی نمره)</th>
-              <th className="text-right p-2.5 font-medium">تفسیر</th>
+            <tr className="bg-[var(--bg)]/60 border-b border-[var(--ink-faint)] text-[var(--ink-muted)] text-xs">
+              <th className="text-right p-3 font-bold">مقیاس</th>
+              <th className="text-right p-3 font-bold">سطح (بازه‌ی نمره)</th>
+              <th className="text-right p-3 font-bold">تفسیر</th>
             </tr>
           </thead>
           <tbody>
@@ -28,7 +28,7 @@ function BandsTable({ test }: { test: AnyTestDef }) {
                 return (
                   <tr
                     key={`${k}-${i}`}
-                    className="border-b border-[#d5dce1] dark:border-[#33414d] align-top"
+                    className="border-b border-[var(--ink-faint)] align-top"
                   >
                     {i === 0 && (
                       <td
@@ -44,7 +44,7 @@ function BandsTable({ test }: { test: AnyTestDef }) {
                         {from}–{to}
                       </span>
                     </td>
-                    <td className="p-2.5 text-xs text-[#5a6a78] dark:text-[#9aabb8]">{b.text}</td>
+                    <td className="p-2.5 text-xs text-[var(--ink-muted)]">{b.text}</td>
                   </tr>
                 );
               });
@@ -86,14 +86,14 @@ function BandsTable({ test }: { test: AnyTestDef }) {
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm min-w-[460px]">
           <thead>
-            <tr className="bg-[#f4f6f7] dark:bg-[#222d36] text-[#5a6a78] dark:text-[#9aabb8]">
-              <th className="text-right p-2.5 font-medium">شاخص</th>
-              <th className="text-right p-2.5 font-medium">مرزها (تقریبی)</th>
+            <tr className="bg-[var(--bg)]/60 border-b border-[var(--ink-faint)] text-[var(--ink-muted)] text-xs">
+              <th className="text-right p-3 font-bold">شاخص</th>
+              <th className="text-right p-3 font-bold">مرزها (تقریبی)</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r, idx) => (
-              <tr key={idx} className="border-b border-[#d5dce1] dark:border-[#33414d]">
+              <tr key={idx} className="border-b border-[var(--ink-faint)]">
                 <td className="p-2.5 font-semibold whitespace-nowrap">{r[0]}</td>
                 <td className="p-2.5 text-xs">{r[1]}</td>
               </tr>
@@ -101,7 +101,7 @@ function BandsTable({ test }: { test: AnyTestDef }) {
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8] mt-2">
+      <p className="text-xs text-[var(--ink-muted)] mt-2">
         مرزها تقریبی و بر پایه‌ی یافته‌های رایج است و برای نمونه‌ی ایرانی/سازمان شما هنجاریابی
         نشده است. پس از ثبت نتایج چند ده نفر از کارکنان خودتان، میانگین واحد را مبنای مقایسه قرار
         دهید.
@@ -113,22 +113,10 @@ function BandsTable({ test }: { test: AnyTestDef }) {
 export const HelpView: React.FC = () => {
   const allWorkUnits = getAllWorkUnits();
   return (
-    <div>
-      <h1 className="text-2xl font-extrabold mb-1">راهنما و تفسیر</h1>
-      <p className="text-sm text-[#5a6a78] dark:text-[#9aabb8] mb-5">
-        نحوه‌ی اجرا، نمره‌گذاری و تفسیر هر آزمون، همراه با اصول اخلاقی، کاربرد در محیط صنعتی و
-        راه‌اندازی چندرایانه‌ای.
-      </p>
-
-      <div className="space-y-3">
-        <details
-          open
-          className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c]"
-        >
-          <summary className="cursor-pointer px-4 py-3 font-bold">
-            ۱) روند کار پیشنهادی (چند رایانه با پایگاه داده مشترک)
-          </summary>
-          <div className="px-4 pb-4 text-sm space-y-2">
+    <div className="space-y-4">
+        <details open className="editorial-details">
+          <summary>۱) روند کار پیشنهادی (چند رایانه با پایگاه داده مشترک)</summary>
+          <div className="p-5 sm:p-6 text-sm space-y-2">
             <ol className="list-decimal pr-5 space-y-1.5">
               <li>
                 <b>اتصال رایانه‌ها:</b> روی تمام رایانه‌ها با حساب گوگل مشترک وارد شوید یا مالک
@@ -157,11 +145,9 @@ export const HelpView: React.FC = () => {
           </div>
         </details>
 
-        <details className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c]">
-          <summary className="cursor-pointer px-4 py-3 font-bold">
-            ۲) اصول اخلاقی و حقوقی (پیش از هر آزمون بخوانید)
-          </summary>
-          <div className="px-4 pb-4 text-sm">
+        <details className="editorial-details">
+          <summary>۲) اصول اخلاقی و حقوقی (پیش از هر آزمون بخوانید)</summary>
+          <div className="p-5 sm:p-6 text-sm">
             <ul className="list-disc pr-5 space-y-1.5">
               <li>
                 رضایت آگاهانه: هدف آزمون، نحوه‌ی استفاده از نتیجه، و اینکه چه کسی نتیجه را می‌بیند
@@ -200,29 +186,25 @@ export const HelpView: React.FC = () => {
           </div>
         </details>
 
-        <details className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c]">
-          <summary className="cursor-pointer px-4 py-3 font-bold">
-            ۳) آزمون‌ها: نحوه‌ی اجرا و تفسیر
-          </summary>
-          <div className="px-4 pb-4 space-y-2">
+        <details className="editorial-details">
+          <summary>۳) آزمون‌ها: نحوه‌ی اجرا و تفسیر</summary>
+          <div className="p-5 sm:p-6 space-y-3">
             {ALL_TESTS.map((t) => (
               <details
                 key={t.id}
-                className="rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-[#f4f6f7]/50 dark:bg-[#222d36]/40"
+                className="rounded-xl border border-[var(--ink-faint)] bg-[var(--bg)]"
               >
-                <summary className="cursor-pointer px-3.5 py-2.5 font-bold text-sm">
-                  {t.title}{' '}
-                  <span className="text-xs font-normal text-[#5a6a78] dark:text-[#9aabb8] mr-2">
+                <summary className="cursor-pointer px-4 py-3 font-bold text-sm flex flex-wrap items-center justify-between gap-2">
+                  <span>{t.title}</span>
+                  <span className="text-xs font-normal text-[var(--ink-muted)]">
                     {t.type === 'q' ? 'پرسشنامه' : 'عملکردی'} · حدود {faDigits(t.minutes)} دقیقه
                   </span>
                 </summary>
-                <div className="px-3.5 pb-3.5 text-sm space-y-3">
+                <div className="px-4 pb-4 pt-2 border-t border-[var(--ink-faint)] text-sm space-y-3">
                   <dl className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-y-2 gap-x-3">
-                    <dt className="text-[#5a6a78] dark:text-[#9aabb8] font-medium">
-                      چه چیزی می‌سنجد
-                    </dt>
+                    <dt className="text-[var(--ink-muted)] font-medium">چه چیزی می‌سنجد</dt>
                     <dd>{t.guide.measures}</dd>
-                    <dt className="text-[#5a6a78] dark:text-[#9aabb8] font-medium">نحوه‌ی اجرا</dt>
+                    <dt className="text-[var(--ink-muted)] font-medium">نحوه‌ی اجرا</dt>
                     <dd>
                       <ul className="list-disc pr-5 space-y-1">
                         {t.guide.admin.map((x, idx) => (
@@ -230,7 +212,7 @@ export const HelpView: React.FC = () => {
                         ))}
                       </ul>
                     </dd>
-                    <dt className="text-[#5a6a78] dark:text-[#9aabb8] font-medium">کاربرد مناسب</dt>
+                    <dt className="text-[var(--ink-muted)] font-medium">کاربرد مناسب</dt>
                     <dd>
                       <ul className="list-disc pr-5 space-y-1">
                         {t.guide.use.map((x, idx) => (
@@ -238,7 +220,7 @@ export const HelpView: React.FC = () => {
                         ))}
                       </ul>
                     </dd>
-                    <dt className="text-[#5a6a78] dark:text-[#9aabb8] font-medium">محدودیت‌ها</dt>
+                    <dt className="text-[var(--ink-muted)] font-medium">محدودیت‌ها</dt>
                     <dd>
                       <ul className="list-disc pr-5 space-y-1">
                         {t.guide.limits.map((x, idx) => (
@@ -257,36 +239,32 @@ export const HelpView: React.FC = () => {
           </div>
         </details>
 
-        <details className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c]">
-          <summary className="cursor-pointer px-4 py-3 font-bold">
-            ۴) بسته‌های پیشنهادی بر اساس شغل
-          </summary>
-          <div className="px-4 pb-4 text-sm">
+        <details className="editorial-details">
+          <summary>۴) بسته‌های پیشنهادی بر اساس شغل</summary>
+          <div className="p-5 sm:p-6 text-sm">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-sm min-w-[520px]">
                 <thead>
-                  <tr className="bg-[#f4f6f7] dark:bg-[#222d36] text-[#5a6a78] dark:text-[#9aabb8]">
-                    <th className="text-right p-2.5 font-medium">گروه شغلی</th>
-                    <th className="text-right p-2.5 font-medium">آزمون‌ها</th>
-                    <th className="text-right p-2.5 font-medium">توضیح</th>
+                  <tr className="bg-[var(--bg)]/60 border-b border-[var(--ink-faint)] text-[var(--ink-muted)] text-xs">
+                    <th className="text-right p-3 font-bold">گروه شغلی</th>
+                    <th className="text-right p-3 font-bold">آزمون‌ها</th>
+                    <th className="text-right p-3 font-bold">توضیح</th>
                   </tr>
                 </thead>
                 <tbody>
                   {BATTERIES.map((b, i) => (
-                    <tr key={i} className="border-b border-[#d5dce1] dark:border-[#33414d]">
+                    <tr key={i} className="border-b border-[var(--ink-faint)] last:border-b-0">
                       <td className="p-2.5 font-bold">{b.name}</td>
                       <td className="p-2.5 text-xs">
                         {b.tests.map((id) => testById(id).short).join('، ')}
                       </td>
-                      <td className="p-2.5 text-xs text-[#5a6a78] dark:text-[#9aabb8]">
-                        {b.note}
-                      </td>
+                      <td className="p-2.5 text-xs text-[var(--ink-muted)]">{b.note}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8] mt-2">
+            <p className="text-xs text-[var(--ink-muted)] mt-3">
               بسته‌ها پیشنهادی‌اند؛ بر اساس شرح شغل و تحلیل خطرات پست، آنها را کم یا زیاد کنید.
               زمان کل یک بسته ۲۰ تا ۳۰ دقیقه است؛ بهتر است در دو نوبت اجرا شود تا خستگی نمره‌ها را
               مخدوش نکند.
@@ -294,11 +272,11 @@ export const HelpView: React.FC = () => {
           </div>
         </details>
 
-        <details className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c]">
-          <summary className="cursor-pointer px-4 py-3 font-bold">
+        <details className="editorial-details">
+          <summary>
             ۵) نقشه {faDigits(allWorkUnits.length)} واحد کاری سازمان و تعیین شغل پشت‌میزی در برابر میدانی (مدل هالند)
           </summary>
-          <div className="px-4 pb-4 text-sm space-y-3">
+          <div className="p-5 sm:p-6 text-sm space-y-3">
             <p className="leading-7">
               سامانه با اجرای آزمون استاندارد <b>O*NET Mini-IP (مدل RIASEC جان هالند)</b> به همراه{' '}
               <b>Mini-IPIP (پنج عامل بزرگ شخصیت)</b>، به‌صورت مستقیم درصد تناسب فرد را با ۵ نوع
@@ -310,22 +288,25 @@ export const HelpView: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-xs min-w-[540px]">
                 <thead>
-                  <tr className="bg-[#f4f6f7] dark:bg-[#222d36] text-[#5a6a78] dark:text-[#9aabb8]">
-                    <th className="text-right p-2.5 font-medium">گروه شغلی</th>
-                    <th className="text-right p-2.5 font-medium">ماهیت محیط کار</th>
-                    <th className="text-right p-2.5 font-medium">واحدهای کاری</th>
+                  <tr className="bg-[var(--bg)]/60 border-b border-[var(--ink-faint)] text-[var(--ink-muted)]">
+                    <th className="text-right p-3 font-bold">گروه شغلی</th>
+                    <th className="text-right p-3 font-bold">ماهیت محیط کار</th>
+                    <th className="text-right p-3 font-bold">واحدهای کاری</th>
                   </tr>
                 </thead>
                 <tbody>
                   {OCCUPATIONAL_CATEGORIES.map((cat) => {
                     const units = allWorkUnits.filter((u) => u.categoryId === cat.id);
                     return (
-                      <tr key={cat.id} className="border-b border-[#d5dce1] dark:border-[#33414d] align-top">
+                      <tr
+                        key={cat.id}
+                        className="border-b border-[var(--ink-faint)] last:border-b-0 align-top"
+                      >
                         <td className="p-2.5 font-bold whitespace-nowrap">{cat.shortTitle}</td>
-                        <td className="p-2.5 text-[#0e6a88] dark:text-[#4fb4d4] font-semibold whitespace-nowrap">
+                        <td className="p-2.5 text-[var(--accent)] font-semibold whitespace-nowrap">
                           {cat.workSettingLabel}
                         </td>
-                        <td className="p-2.5 text-[#5a6a78] dark:text-[#9aabb8] leading-6">
+                        <td className="p-2.5 text-[var(--ink-muted)] leading-6">
                           {units.map((u) => u.name).join('، ')}
                         </td>
                       </tr>
@@ -337,11 +318,9 @@ export const HelpView: React.FC = () => {
           </div>
         </details>
 
-        <details className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c]">
-          <summary className="cursor-pointer px-4 py-3 font-bold">
-            ۶) تفسیر ترکیبی (الگوهای مهم)
-          </summary>
-          <div className="px-4 pb-4 text-sm">
+        <details className="editorial-details">
+          <summary>۶) تفسیر ترکیبی (الگوهای مهم)</summary>
+          <div className="p-5 sm:p-6 text-sm">
             <ul className="list-disc pr-5 space-y-1.5">
               <li>
                 وظیفه‌شناسی پایین + ریسک‌پذیری بالا + پایبندی ضعیف به مقررات: الگوی پرخطر برای مشاغل
@@ -374,11 +353,9 @@ export const HelpView: React.FC = () => {
           </div>
         </details>
 
-        <details className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c]">
-          <summary className="cursor-pointer px-4 py-3 font-bold">
-            ۷) شرایط اجرا برای نتایج معتبر
-          </summary>
-          <div className="px-4 pb-4 text-sm">
+        <details className="editorial-details">
+          <summary>۷) شرایط اجرا برای نتایج معتبر</summary>
+          <div className="p-5 sm:p-6 text-sm">
             <ul className="list-disc pr-5 space-y-1.5">
               <li>اتاق ساکت، نور مناسب، بدون رفت‌وآمد؛ همان دستگاه برای همه‌ی افراد گروه.</li>
               <li>
@@ -395,9 +372,9 @@ export const HelpView: React.FC = () => {
           </div>
         </details>
 
-        <details className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c]">
-          <summary className="cursor-pointer px-4 py-3 font-bold">۸) پرسش‌های متداول و مراجع علمی</summary>
-          <div className="px-4 pb-4 text-sm space-y-3">
+        <details className="editorial-details">
+          <summary>۸) پرسش‌های متداول و مراجع علمی</summary>
+          <div className="p-5 sm:p-6 text-sm space-y-3">
             <p>
               <b>آیا این آزمون‌ها استاندارد علمی دارند یا صرفاً اقتباس‌اند؟</b>
               <br />
@@ -419,8 +396,7 @@ export const HelpView: React.FC = () => {
               و Excel است.
             </p>
           </div>
-        </details>
-      </div>
+      </details>
     </div>
   );
 };

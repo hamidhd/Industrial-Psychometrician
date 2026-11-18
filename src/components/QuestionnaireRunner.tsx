@@ -44,22 +44,22 @@ export const QuestionnaireRunner: React.FC<Props> = ({ questionnaire, onComplete
 
   return (
     <div>
-      <div className="h-1.5 w-full rounded bg-[#f4f6f7] dark:bg-[#222d36] overflow-hidden mb-4">
+      <div className="h-2 w-full rounded-full bg-[var(--bg)] border border-[var(--ink-faint)] overflow-hidden mb-4">
         <div
-          className="h-full bg-[#0e6a88] dark:bg-[#4fb4d4] transition-all duration-200"
+          className="h-full rounded-full bg-[var(--accent)] transition-all duration-200"
           style={{ width: `${progress}%` }}
         />
       </div>
 
       {index === 0 && (
-        <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8] mb-3">{questionnaire.intro}</p>
+        <p className="text-xs text-[var(--ink-muted)] mb-3 leading-6">{questionnaire.intro}</p>
       )}
 
-      <div className="text-xs text-[#5a6a78] dark:text-[#9aabb8] tabular-nums">
+      <div className="text-xs text-[var(--ink-muted)] tabular-nums">
         گویه {faDigits(index + 1)} از {faDigits(total)}
       </div>
 
-      <div className="text-lg sm:text-xl font-semibold my-3 min-h-[3.5rem] text-balance">
+      <div className="text-lg sm:text-xl font-bold my-3 min-h-[3.5rem] text-balance leading-8">
         {item[0]}
       </div>
 
@@ -72,13 +72,13 @@ export const QuestionnaireRunner: React.FC<Props> = ({ questionnaire, onComplete
               key={val}
               type="button"
               onClick={() => selectOption(val)}
-              className={`flex items-center gap-3 text-right w-full px-4 py-3 rounded-lg border text-sm transition-colors cursor-pointer ${
+              className={`flex items-center gap-3 text-right w-full px-4 py-3 rounded-xl border text-sm transition-colors cursor-pointer ${
                 active
-                  ? 'border-[#0e6a88] bg-[#dcedf3] dark:bg-[#17323d] font-bold'
-                  : 'border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] hover:border-[#0e6a88] hover:bg-[#dcedf3]/60 dark:hover:bg-[#17323d]/60'
+                  ? 'border-[var(--accent)] bg-[var(--accent-soft)] font-bold'
+                  : 'border-[var(--ink-faint)] bg-[var(--bg)] hover:border-[var(--accent)]/50'
               }`}
             >
-              <kbd className="inline-grid place-items-center min-w-[26px] h-[26px] rounded bg-[#f4f6f7] dark:bg-[#222d36] border border-[#d5dce1] dark:border-[#33414d] text-xs tabular-nums">
+              <kbd className="inline-grid place-items-center min-w-[26px] h-[26px] rounded-md bg-[var(--surface)] border border-[var(--ink-faint)] text-xs num-ltr tabular-nums">
                 {faDigits(k + 1)}
               </kbd>
               <span>{label}</span>
@@ -92,11 +92,11 @@ export const QuestionnaireRunner: React.FC<Props> = ({ questionnaire, onComplete
           type="button"
           disabled={index === 0}
           onClick={() => setIndex((i) => Math.max(0, i - 1))}
-          className="px-3 py-1.5 text-xs font-medium rounded-md border border-[#d5dce1] dark:border-[#33414d] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+          className="px-3.5 py-1.5 text-xs font-medium rounded-lg bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/40 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
         >
           قبلی
         </button>
-        <span className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
+        <span className="text-xs text-[var(--ink-muted)]">
           می‌توانید از کلیدهای ۱ تا {faDigits(questionnaire.scale.labels.length)} صفحه‌کلید هم
           استفاده کنید.
         </span>

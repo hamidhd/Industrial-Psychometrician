@@ -112,7 +112,7 @@ const ReactionTask: React.FC<{ onFinish: (raw: Record<string, unknown>) => void 
       ? 'bg-[#1f9d57] text-white border-[#1f9d57]'
       : phase === 'wait'
       ? 'bg-[#b83232] text-white border-[#b83232]'
-      : 'bg-[#f4f6f7] dark:bg-[#222d36] text-[#1b2733] dark:text-[#e6ecf0] border-[#d5dce1] dark:border-[#33414d]';
+      : 'bg-[var(--bg)] text-[var(--ink)] border-[var(--ink-faint)]';
 
   return (
     <div>
@@ -124,7 +124,7 @@ const ReactionTask: React.FC<{ onFinish: (raw: Record<string, unknown>) => void 
           e.preventDefault();
           handleHit();
         }}
-        className={`min-h-[300px] rounded-[10px] border grid place-items-center text-center p-5 select-none touch-manipulation cursor-pointer transition-colors ${stageColor}`}
+        className={`min-h-[300px] rounded-xl border grid place-items-center text-center p-5 select-none touch-manipulation cursor-pointer transition-colors ${stageColor}`}
       >
         <div>
           <div className="text-4xl sm:text-6xl font-extrabold leading-tight tabular-nums">
@@ -133,7 +133,7 @@ const ReactionTask: React.FC<{ onFinish: (raw: Record<string, unknown>) => void 
           {subText && <div className="text-sm mt-2 opacity-90">{subText}</div>}
         </div>
       </div>
-      <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8] mt-2">{infoText}</p>
+      <p className="text-xs text-[var(--ink-muted)] mt-2">{infoText}</p>
     </div>
   );
 };
@@ -234,7 +234,7 @@ const StroopTask: React.FC<{ onFinish: (raw: Record<string, unknown>) => void }>
 
   return (
     <div>
-      <div className="min-h-[300px] rounded-[10px] border border-[#33414d] bg-[#20262c] text-white grid place-items-center text-center p-5 select-none">
+      <div className="min-h-[300px] rounded-xl border border-[var(--ink-faint)] bg-[#20262c] text-white grid place-items-center text-center p-5 select-none">
         {step === 'intro1' && (
           <div className="max-w-lg text-sm leading-8">
             <p>
@@ -246,7 +246,7 @@ const StroopTask: React.FC<{ onFinish: (raw: Record<string, unknown>) => void }>
             <button
               type="button"
               onClick={startPhase1}
-              className="mt-4 px-5 py-2 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-90 cursor-pointer"
+              className="mt-4 px-5 py-2 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] hover:opacity-90 cursor-pointer"
             >
               شروع
             </button>
@@ -261,7 +261,7 @@ const StroopTask: React.FC<{ onFinish: (raw: Record<string, unknown>) => void }>
             <button
               type="button"
               onClick={startPhase2}
-              className="mt-4 px-5 py-2 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-90 cursor-pointer"
+              className="mt-4 px-5 py-2 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] hover:opacity-90 cursor-pointer"
             >
               شروع مرحله‌ی ۲
             </button>
@@ -398,7 +398,7 @@ const DigitsTask: React.FC<{ onFinish: (raw: Record<string, unknown>) => void }>
   };
 
   return (
-    <div className="min-h-[300px] rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-[#f4f6f7] dark:bg-[#222d36] grid place-items-center text-center p-5 select-none">
+    <div className="min-h-[300px] rounded-xl border border-[var(--ink-faint)] bg-[var(--bg)] grid place-items-center text-center p-5 select-none">
       {intro ? (
         <div className="max-w-lg text-sm leading-8">
           <p>
@@ -416,7 +416,7 @@ const DigitsTask: React.FC<{ onFinish: (raw: Record<string, unknown>) => void }>
           <button
             type="button"
             onClick={handleContinueIntro}
-            className="mt-4 px-5 py-2 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-90 cursor-pointer"
+            className="mt-4 px-5 py-2 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] hover:opacity-90 cursor-pointer"
           >
             ادامه
           </button>
@@ -427,12 +427,12 @@ const DigitsTask: React.FC<{ onFinish: (raw: Record<string, unknown>) => void }>
             <div className="text-6xl sm:text-7xl font-extrabold num-ltr">{shownDigit}</div>
           )}
           <div
-            className="text-3xl font-extrabold tracking-[8px] min-h-[44px] mt-1"
+            className="text-3xl font-extrabold tracking-[8px] min-h-[44px] mt-1 num-ltr"
             style={{ direction: 'ltr' }}
           >
             {typed}
           </div>
-          <div className="text-sm text-[#5a6a78] dark:text-[#9aabb8] mt-1">{message}</div>
+          <div className="text-sm text-[var(--ink-muted)] mt-1">{message}</div>
           {inputMode && (
             <div className="grid grid-cols-3 gap-2 max-w-[280px] mx-auto mt-3">
               {'1234567890⌫✓'.split('').map((k) => (
@@ -440,7 +440,7 @@ const DigitsTask: React.FC<{ onFinish: (raw: Record<string, unknown>) => void }>
                   key={k}
                   type="button"
                   onClick={() => pressKey(k)}
-                  className="h-13 text-xl font-bold rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] hover:border-[#0e6a88] cursor-pointer"
+                  className="h-13 text-xl font-bold rounded-md border border-[var(--ink-faint)] bg-[var(--surface)] hover:border-[var(--ink)] cursor-pointer"
                 >
                   {k}
                 </button>
@@ -539,11 +539,11 @@ const TrailTask: React.FC<{ onFinish: (raw: Record<string, unknown>) => void }> 
   return (
     <div>
       {!intro && (
-        <div className="text-sm text-[#5a6a78] dark:text-[#9aabb8] mb-2 font-medium">
-          بعدی: <span className="text-[#0e6a88] dark:text-[#4fb4d4] font-bold">{nextLabel}</span>
+        <div className="text-sm text-[var(--ink-muted)] mb-2 font-medium">
+          بعدی: <span className="text-[var(--accent)] font-bold">{nextLabel}</span>
         </div>
       )}
-      <div className="relative w-full h-[420px] rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-[#f4f6f7] dark:bg-[#222d36] touch-manipulation overflow-hidden">
+      <div className="relative w-full h-[420px] rounded-xl border border-[var(--ink-faint)] bg-[var(--bg)] touch-manipulation overflow-hidden">
         {intro ? (
           <div className="grid place-items-center h-full text-center p-4">
             <div className="max-w-lg text-sm leading-8">
@@ -563,7 +563,7 @@ const TrailTask: React.FC<{ onFinish: (raw: Record<string, unknown>) => void }> 
               <button
                 type="button"
                 onClick={() => startPart(intro)}
-                className="mt-4 px-5 py-2 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-90 cursor-pointer"
+                className="mt-4 px-5 py-2 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] hover:opacity-90 cursor-pointer"
               >
                 شروع
               </button>
@@ -581,9 +581,9 @@ const TrailTask: React.FC<{ onFinish: (raw: Record<string, unknown>) => void }> 
                 style={{ right: `${n.x}%`, top: `${n.y}%` }}
                 className={`absolute w-11 h-11 -mt-[22px] -mr-[22px] rounded-full border-2 font-extrabold text-base grid place-items-center cursor-pointer transition-colors ${
                   isDone
-                    ? 'bg-[#0e6a88] border-[#0e6a88] text-white'
-                    : 'bg-white dark:bg-[#1b242c] border-[#1b2733] dark:border-[#e6ecf0] text-[#1b2733] dark:text-[#e6ecf0]'
-                } ${isErr ? 'animate-shake border-[#b83232]' : ''}`}
+                    ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--accent-fg)]'
+                    : 'bg-[var(--surface)] border-[var(--ink)] text-[var(--ink)]'
+                } ${isErr ? 'animate-shake border-[#dc2626]' : ''}`}
               >
                 {n.label}
               </button>

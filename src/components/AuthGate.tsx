@@ -248,15 +248,15 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
 
   if (pendingUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-[#edf0f2] dark:bg-[#12181e]">
-        <div className="w-full max-w-md bg-white dark:bg-[#1b242c] border border-[#d5dce1] dark:border-[#33414d] rounded-xl p-6 sm:p-8 space-y-4">
+      <div className="ambient-shell min-h-screen flex items-center justify-center p-4 bg-[var(--bg)] text-[var(--ink)]">
+        <div className="w-full max-w-md bg-[var(--surface)] border border-[var(--ink-faint)] rounded-2xl p-6 sm:p-8 space-y-4">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-[10px] bg-[#0e6a88] text-white grid place-items-center font-extrabold text-xl shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[var(--accent)] text-[var(--accent-fg)] grid place-items-center font-black text-lg shrink-0 shadow-[0_0_20px_var(--accent-soft)]">
               <KeyRound className="w-5 h-5" />
             </div>
             <div>
               <h1 className="text-lg font-extrabold">تغییر رمز عبور الزامی است</h1>
-              <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
+              <p className="text-xs text-[var(--ink-muted)]">
                 {pendingUser.name} عزیز، لطفاً برای امنیت حساب کاربری خود رمز عبور جدید تعیین کنید.
               </p>
             </div>
@@ -271,7 +271,7 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
                 dir="ltr"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm num-ltr"
+                className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm num-ltr"
               />
             </div>
             <div>
@@ -282,13 +282,13 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
                 dir="ltr"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm num-ltr"
+                className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm num-ltr"
               />
             </div>
             <button
               type="submit"
               disabled={changingPass}
-              className="w-full py-2.5 px-4 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-95 cursor-pointer text-sm"
+              className="w-full py-2.5 px-4 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] shadow-[0_4px_12px_var(--accent-soft)] hover:opacity-95 cursor-pointer text-sm"
             >
               {changingPass ? 'در حال ذخیره…' : 'ثبت رمز عبور جدید و ورود'}
             </button>
@@ -299,29 +299,29 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#edf0f2] dark:bg-[#12181e]">
-      <div className="w-full max-w-lg bg-white dark:bg-[#1b242c] border border-[#d5dce1] dark:border-[#33414d] rounded-xl p-6 sm:p-8">
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-11 h-11 rounded-[10px] bg-[#0e6a88] text-white grid place-items-center font-extrabold text-xl shrink-0">
+    <div className="ambient-shell min-h-screen flex items-center justify-center p-4 bg-[var(--bg)] text-[var(--ink)]">
+      <div className="w-full max-w-lg bg-[var(--surface)] border border-[var(--ink-faint)] rounded-2xl p-6 sm:p-8">
+        <div className="flex items-center gap-3 pb-5 mb-6 border-b border-[var(--ink-faint)]">
+          <div className="w-10 h-10 rounded-xl bg-[var(--accent)] text-[var(--accent-fg)] grid place-items-center font-black text-xl shrink-0 shadow-[0_0_20px_var(--accent-soft)]">
             ر
           </div>
           <div>
-            <h1 className="text-xl font-extrabold leading-tight">روان‌سنج صنعتی</h1>
-            <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
+            <h1 className="text-2xl font-black leading-tight tracking-tight">روان‌سنج صنعتی</h1>
+            <p className="text-xs text-[var(--ink-muted)]">
               سامانه جامع آزمون‌های روان‌شناختی محیط کار
             </p>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="grid grid-cols-3 gap-1 p-1 bg-[#f4f6f7] dark:bg-[#222d36] rounded-lg mb-5 text-xs font-bold">
+        <div className="grid grid-cols-3 gap-1 p-1 bg-[var(--bg)] border border-[var(--ink-faint)] rounded-xl mb-5 text-xs font-bold">
           <button
             type="button"
             onClick={() => setTab('personnel')}
-            className={`py-2 rounded-md transition-colors cursor-pointer ${
+            className={`py-2 rounded-lg transition-colors cursor-pointer ${
               tab === 'personnel'
-                ? 'bg-white dark:bg-[#1b242c] text-[#1b2733] dark:text-[#e6ecf0] shadow-xs'
-                : 'text-[#5a6a78] dark:text-[#9aabb8] hover:text-[#1b2733]'
+                ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
+                : 'text-[var(--ink-muted)] hover:text-[var(--ink)]'
             }`}
           >
             ورود پرسنل (کد ملی)
@@ -329,10 +329,10 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
           <button
             type="button"
             onClick={() => setTab('admin')}
-            className={`py-2 rounded-md transition-colors cursor-pointer ${
+            className={`py-2 rounded-lg transition-colors cursor-pointer ${
               tab === 'admin'
-                ? 'bg-white dark:bg-[#1b242c] text-[#1b2733] dark:text-[#e6ecf0] shadow-xs'
-                : 'text-[#5a6a78] dark:text-[#9aabb8] hover:text-[#1b2733]'
+                ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
+                : 'text-[var(--ink-muted)] hover:text-[var(--ink)]'
             }`}
           >
             مدیران / ارزیابان
@@ -340,10 +340,10 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
           <button
             type="button"
             onClick={() => setTab('google')}
-            className={`py-2 rounded-md transition-colors cursor-pointer ${
+            className={`py-2 rounded-lg transition-colors cursor-pointer ${
               tab === 'google'
-                ? 'bg-white dark:bg-[#1b242c] text-[#1b2733] dark:text-[#e6ecf0] shadow-xs'
-                : 'text-[#5a6a78] dark:text-[#9aabb8] hover:text-[#1b2733]'
+                ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
+                : 'text-[var(--ink-muted)] hover:text-[var(--ink)]'
             }`}
           >
             حساب گوگل
@@ -352,8 +352,8 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
 
         {tab === 'personnel' && (
           <form onSubmit={handlePersonnelLogin} className="space-y-4">
-            <div className="rounded-lg p-3 bg-[#dcedf3] dark:bg-[#17323d] border border-[#0e6a88] text-xs leading-6">
-              <b>تکمیل آزمون برای پرسنل:</b> کد ملی (۱۰ رقم) یا کد پرسنلی خود را وارد کنید تا به
+            <div className="rounded-xl p-3.5 bg-[var(--accent-soft)] border border-[var(--accent)] text-xs leading-6">
+              <b className="text-[var(--accent)]">تکمیل آزمون برای پرسنل:</b> کد ملی (۱۰ رقم) یا کد پرسنلی خود را وارد کنید تا به
               پرسشنامه‌ها و آزمون‌های اختصاص‌یافته دسترسی پیدا کنید.
             </div>
             <div>
@@ -365,20 +365,20 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
                 placeholder="مثلاً: 0000000001 یا 10001"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm num-ltr font-semibold"
+                className="w-full px-3 py-2.5 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm num-ltr font-semibold"
               />
             </div>
             <button
               type="button"
               onClick={() => setIdentifier('10001')}
-              className="text-xs text-[#0e6a88] dark:text-[#4fb4d4] hover:underline cursor-pointer block"
+              className="text-xs text-[var(--accent)] hover:underline cursor-pointer block"
             >
               نمونه تست پرسنلی (کد پرسنلی: 10001)
             </button>
             <button
               type="submit"
               disabled={loadingPersonnel}
-              className="w-full py-3 px-4 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-95 disabled:opacity-60 cursor-pointer text-sm"
+              className="w-full py-3 px-4 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] shadow-[0_4px_12px_var(--accent-soft)] hover:opacity-95 disabled:opacity-60 cursor-pointer text-sm"
             >
               {loadingPersonnel ? 'در حال بررسی…' : 'ورود به سامانه آزمون'}
             </button>
@@ -387,13 +387,13 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
 
         {tab === 'admin' && (
           <form onSubmit={handleAdminLogin} className="space-y-4">
-            <div className="rounded-lg p-3 bg-[#fbf0cc] dark:bg-[#3b3213] border border-[#8a6a00] text-xs leading-6">
+            <div className="rounded-xl p-3.5 bg-[#fef9c3] dark:bg-[#422006]/50 border border-[#ca8a04]/40 text-xs leading-6">
               <b>ویژه‌ی مدیران و ارزیابان (HSE / طب کار):</b> دسترسی کامل به نتایج، گزارش‌ها و مدیریت
               کاربران. نام کاربری پیش‌فرض مدیر: <code className="num-ltr">admin</code> / رمز عبور:{' '}
               <code className="num-ltr">admin123</code> (در اولین ورود تغییر خواهد کرد).
             </div>
             {adminErr && (
-              <div className="rounded-lg p-3 bg-[#fbdcdc] dark:bg-[#431c1c] border border-[#b83232] text-xs font-medium">
+              <div className="rounded-xl p-3 bg-[#fef2f2] dark:bg-[#450a0a]/60 border border-[#dc2626]/40 dark:border-[#f87171]/40 text-xs font-medium">
                 {adminErr}
               </div>
             )}
@@ -406,7 +406,7 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
                 placeholder="admin"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm num-ltr"
+                className="w-full px-3 py-2.5 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm num-ltr"
               />
             </div>
             <div>
@@ -417,13 +417,13 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
                 dir="ltr"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm num-ltr"
+                className="w-full px-3 py-2.5 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm num-ltr"
               />
             </div>
             <button
               type="submit"
               disabled={loadingAdmin}
-              className="w-full py-3 px-4 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-95 disabled:opacity-60 cursor-pointer text-sm"
+              className="w-full py-3 px-4 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] shadow-[0_4px_12px_var(--accent-soft)] hover:opacity-95 disabled:opacity-60 cursor-pointer text-sm"
             >
               {loadingAdmin ? 'در حال ورود…' : 'ورود مدیریت'}
             </button>
@@ -432,16 +432,16 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
 
         {tab === 'google' && (
           <div className="space-y-4">
-            <p className="text-sm text-[#1b2733] dark:text-[#e6ecf0] leading-7">
+            <p className="text-sm leading-7 text-[var(--ink-muted)]">
               اگر به اینترنت و حساب گوگل دسترسی دارید، می‌توانید از طریق دکمه‌ی زیر به پایگاه داده ابری
               مشترک متصل شوید.
             </p>
             <button
               type="button"
               onClick={handleGoogle}
-              className="w-full py-3 px-4 rounded-lg font-bold bg-white dark:bg-[#1b242c] border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer text-sm flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 rounded-lg font-bold bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/50 cursor-pointer text-sm flex items-center justify-center gap-2 transition-colors"
             >
-              <Users className="w-4 h-4 text-[#0e6a88]" />
+              <Users className="w-4 h-4 text-[var(--accent)]" />
               <span>ورود با حساب گوگل</span>
             </button>
           </div>

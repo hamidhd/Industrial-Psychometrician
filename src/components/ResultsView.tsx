@@ -79,10 +79,9 @@ export const ResultsView: React.FC<Props> = ({
 
   if (!person) {
     return (
-      <div className="space-y-4">
-        <h1 className="text-2xl font-extrabold">نتایج و گزارش</h1>
-        <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5">
-          <p className="text-sm text-[#5a6a78] dark:text-[#9aabb8]">هنوز فردی ثبت نشده است.</p>
+      <div className="space-y-5">
+        <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-6">
+          <p className="text-sm text-[var(--ink-muted)]">هنوز فردی ثبت نشده است.</p>
         </div>
       </div>
     );
@@ -102,15 +101,13 @@ export const ResultsView: React.FC<Props> = ({
   };
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-extrabold">نتایج و گزارش</h1>
-
-      <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5">
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-3">
           <select
             value={person.id}
             onChange={(e) => onSelectPerson(e.target.value)}
-            className="w-full sm:w-[340px] px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+            className="w-full sm:w-[340px] px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm"
           >
             {people.map((x) => {
               const cnt = results.filter((r) => r.personId === x.id).length;
@@ -125,7 +122,7 @@ export const ResultsView: React.FC<Props> = ({
           <button
             type="button"
             onClick={onRunNewTest}
-            className="px-4 py-2 rounded-lg font-bold border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer text-sm whitespace-nowrap"
+            className="px-4 py-2 rounded-lg font-bold bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/40 cursor-pointer text-sm whitespace-nowrap transition-colors"
           >
             + آزمون جدید
           </button>
@@ -133,13 +130,13 @@ export const ResultsView: React.FC<Props> = ({
             type="button"
             disabled={latestByTest.length === 0}
             onClick={() => setShowReport(true)}
-            className="px-4 py-2 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-90 disabled:opacity-50 cursor-pointer text-sm whitespace-nowrap"
+            className="px-4 py-2 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] shadow-[0_4px_12px_var(--accent-soft)] hover:opacity-90 disabled:opacity-50 cursor-pointer text-sm whitespace-nowrap"
           >
             گزارش کامل / چاپ
           </button>
         </div>
 
-        <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8] mt-3">
+        <p className="text-xs text-[var(--ink-muted)] mt-3">
           {KIND_LABEL[person.kind]}
           {person.dept ? ` · واحد: ${person.dept}` : ''}
           {person.job ? ` · پست: ${person.job}` : ''}
@@ -156,8 +153,8 @@ export const ResultsView: React.FC<Props> = ({
       />
 
       {latestByTest.length > 0 ? (
-        <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5">
-          <h2 className="text-lg font-bold mb-2">موارد نیازمند توجه</h2>
+        <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6">
+          <h2 className="text-lg font-extrabold mb-2">موارد نیازمند توجه</h2>
           {attentionItems.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {attentionItems.map((a, idx) => (
@@ -169,17 +166,17 @@ export const ResultsView: React.FC<Props> = ({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-[#5a6a78] dark:text-[#9aabb8]">
+            <p className="text-sm text-[var(--ink-muted)]">
               هیچ نمره‌ی هشداردهنده‌ای ثبت نشده است.
             </p>
           )}
-          <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8] mt-3">
+          <p className="text-xs text-[var(--ink-muted)] mt-3">
             این فهرست فقط راهنمای مصاحبه و پیگیری است و تصمیم نهایی نیست.
           </p>
         </div>
       ) : (
-        <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5">
-          <p className="text-sm text-[#5a6a78] dark:text-[#9aabb8]">
+        <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6">
+          <p className="text-sm text-[var(--ink-muted)]">
             برای این فرد هنوز آزمونی انجام نشده است.
           </p>
         </div>
@@ -191,11 +188,11 @@ export const ResultsView: React.FC<Props> = ({
         return (
           <div
             key={r.id}
-            className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5"
+            className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6"
           >
             <div className="flex flex-wrap items-center gap-2.5 mb-2">
-              <h2 className="text-lg font-bold">{test.title}</h2>
-              <span className="text-xs text-[#5a6a78] dark:text-[#9aabb8] tabular-nums">
+              <h2 className="text-lg font-extrabold">{test.title}</h2>
+              <span className="text-xs text-[var(--ink-muted)] tabular-nums">
                 {jdt(r.date)}
                 {r.computerLabel ? ` · ${r.computerLabel}` : ''}
                 {r.examiner ? ` · ارزیاب: ${r.examiner}` : ''}
@@ -205,7 +202,7 @@ export const ResultsView: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={() => handleDeleteResult(r.id)}
-                  className="px-2.5 py-1 text-xs rounded-md border border-[#b83232] text-[#b83232] dark:border-[#f07a7a] dark:text-[#f07a7a] cursor-pointer whitespace-nowrap"
+                  className="px-2.5 py-1 text-xs rounded-lg border border-[#dc2626]/40 text-[#dc2626] dark:border-[#f87171]/40 dark:text-[#f87171] hover:bg-[#dc2626]/10 cursor-pointer whitespace-nowrap"
                 >
                   حذف
                 </button>
@@ -221,18 +218,16 @@ export const ResultsView: React.FC<Props> = ({
             ))}
 
             {prev.length > 0 && (
-              <details className="mt-3 rounded-lg border border-[#d5dce1] dark:border-[#33414d]">
-                <summary className="cursor-pointer px-3.5 py-2 text-xs font-bold">
-                  نتایج قبلی ({faDigits(prev.length)})
-                </summary>
-                <div className="px-3.5 pb-3 overflow-x-auto">
+              <details className="mt-4 editorial-details">
+                <summary>نتایج قبلی ({faDigits(prev.length)})</summary>
+                <div className="p-4 overflow-x-auto">
                   <table className="w-full border-collapse text-xs min-w-[480px]">
                     <thead>
-                      <tr className="bg-[#f4f6f7] dark:bg-[#222d36] text-[#5a6a78] dark:text-[#9aabb8]">
-                        <th className="text-right p-2 font-medium">تاریخ</th>
-                        <th className="text-right p-2 font-medium">ایستگاه</th>
+                      <tr className="bg-[var(--bg)]/60 border-b border-[var(--ink-faint)] text-[var(--ink-muted)]">
+                        <th className="text-right p-2.5 font-bold">تاریخ</th>
+                        <th className="text-right p-2.5 font-bold">ایستگاه</th>
                         {prev[0].dims.map((d, idx) => (
-                          <th key={idx} className="text-right p-2 font-medium">
+                          <th key={idx} className="text-right p-2.5 font-bold">
                             {d.name}
                           </th>
                         ))}
@@ -242,10 +237,10 @@ export const ResultsView: React.FC<Props> = ({
                       {prev.map((x) => (
                         <tr
                           key={x.id}
-                          className="border-b border-[#d5dce1] dark:border-[#33414d]"
+                          className="border-b border-[var(--ink-faint)] last:border-b-0"
                         >
                           <td className="p-2 tabular-nums">{jdt(x.date)}</td>
-                          <td className="p-2 text-[#5a6a78] dark:text-[#9aabb8]">
+                          <td className="p-2 text-[var(--ink-muted)]">
                             {x.computerLabel || '—'}
                           </td>
                           {x.dims.map((d, idx) => (

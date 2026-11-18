@@ -79,7 +79,7 @@ export default function App() {
     const saved = localStorage.getItem('rsi_theme');
     if (saved === 'dark') return true;
     if (saved === 'light') return false;
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+    return true;
   });
 
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -311,7 +311,7 @@ export default function App() {
 
   if (!authReady || !wsLoaded || !activeWorkspace) {
     return (
-      <div className="min-h-screen grid place-items-center text-sm text-[#5a6a78] dark:text-[#9aabb8]">
+      <div className="min-h-screen grid place-items-center bg-[var(--bg)] text-sm text-[var(--ink-muted)]">
         در حال آماده‌سازی پایگاه داده…
       </div>
     );
@@ -346,232 +346,313 @@ export default function App() {
         { id: 'help' as ViewName, label: 'راهنما', Icon: BookOpen },
       ];
 
+  const viewMeta: Record<ViewName, { title: string; subtitle: string }> = {
+    home: {
+      title: 'داشبورد',
+      subtitle: `سامانه روان‌سنجی استاندارد و جایابی شغلی · ${
+        useCloud ? 'پایگاه داده ابری' : 'حالت محلی'
+      } (${computerLabel})`,
+    },
+    people: {
+      title: 'پرسنل و داوطلبان',
+      subtitle: 'ثبت تکی یا گروهی افراد، دسته‌بندی واحدهای کاری و مدیریت واحدهای اختصاصی سازمان',
+    },
+    run: {
+      title: currentUser.hasResultAccess ? 'اجرای آزمون' : 'تکمیل آزمون',
+      subtitle: 'انتخاب بسته‌ی شغلی و اجرای پرسشنامه‌ها و آزمون‌های عملکردی استاندارد',
+    },
+    results: {
+      title: currentUser.hasResultAccess ? 'نتایج و گزارش' : 'نتیجه و پیشنهاد شغلی من',
+      subtitle: 'تحلیل علمی شاخص‌ها، تعیین واحد کاری مناسب و گزارش قابل چاپ',
+    },
+    help: {
+      title: 'راهنما و تفسیر',
+      subtitle: 'نحوه‌ی اجرا، نمره‌گذاری و تفسیر تخصصی آزمون‌های روان‌سنجی صنعتی',
+    },
+    settings: {
+      title: 'تنظیمات و کاربران',
+      subtitle: 'مدیریت پایگاه داده، همگام‌سازی چندرایانه‌ای و پشتیبان‌گیری اطلاعات',
+    },
+  };
+
+  const activeMeta = viewMeta[view];
+
+  const roleSummary =
+    currentUser.role === 'admin'
+      ? 'مدیر ارشد سیستم (HSE)'
+      : currentUser.role === 'evaluator'
+      ? 'ارزیاب / طب کار'
+      : `واحد: ${currentUser.dept || 'عمومی'}`;
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#edf0f2] dark:bg-[#12181e]">
-      {/* Top Bar */}
-      <header className="no-print sticky top-0 z-30 bg-white dark:bg-[#1b242c] border-b border-[#d5dce1] dark:border-[#33414d]">
-        <div className="max-w-[1380px] mx-auto px-4 h-14 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5 shrink-0">
-            <span className="w-8 h-8 rounded-lg bg-[#0e6a88] text-white grid place-items-center font-extrabold text-base">
-              ر
-            </span>
-            <span className="font-extrabold text-base whitespace-nowrap">روان‌سنج صنعتی</span>
+    <div className="ambient-shell min-h-screen lg:h-screen lg:overflow-hidden flex flex-col bg-[var(--bg)] text-[var(--ink)]">
+      <div className="flex-1 min-h-0 max-w-[1600px] mx-auto w-full grid grid-cols-1 lg:grid-cols-[280px_1fr]">
+        {/* Sidebar (Desktop) */}
+        <aside className="no-print hidden lg:flex flex-col justify-between bg-[var(--surface)] border-l border-[var(--ink-faint)] p-8 overflow-y-auto">
+          <div>
+            <div className="flex items-center gap-3 mb-11">
+              <div className="w-10 h-10 rounded-xl bg-[var(--accent)] text-[var(--accent-fg)] grid place-items-center font-black text-xl shrink-0 shadow-[0_0_20px_var(--accent-soft)]">
+                ر
+              </div>
+              <span className="font-black text-[1.2rem] tracking-tight whitespace-nowrap">
+                روان‌سنج صنعتی
+              </span>
+            </div>
+
+            <nav className="flex flex-col gap-1">
+              {navItems.map(({ id, label, Icon }) => {
+                const active = view === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => navigate(id)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-[10px] text-sm text-right cursor-pointer transition-colors whitespace-nowrap ${
+                      active
+                        ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-bold'
+                        : 'text-[var(--ink-muted)] hover:bg-[var(--ink-faint)] hover:text-[var(--ink)] font-medium'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span>{label}</span>
+                  </button>
+                );
+              })}
+            </nav>
           </div>
 
-          <div className="flex items-center gap-2.5 min-w-0">
-            {currentUser.hasResultAccess && workspaces.length > 1 && (
-              <select
-                aria-label="پایگاه داده فعال"
-                value={activeWorkspace.id}
-                onChange={(e) => handleSelectWorkspace(e.target.value)}
-                className="max-w-[180px] px-2.5 py-1 rounded-md border border-[#d5dce1] dark:border-[#33414d] bg-[#f4f6f7] dark:bg-[#222d36] text-xs font-medium truncate"
-              >
-                {workspaces.map((ws) => (
-                  <option key={ws.id} value={ws.id}>
-                    {ws.org || 'پایگاه داده'}
-                  </option>
-                ))}
-              </select>
-            )}
-
-            <span className="hidden sm:inline text-xs text-[#5a6a78] dark:text-[#9aabb8] whitespace-nowrap truncate max-w-[260px]">
-              {currentUser.name} ({currentUser.role === 'admin' ? 'مدیر سیستم' : currentUser.role === 'evaluator' ? 'ارزیاب' : 'پرسنل'}) · {computerLabel}
-            </span>
-
-            <button
-              type="button"
-              onClick={() => setDark((d) => !d)}
-              title="تغییر پوسته"
-              className="p-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer shrink-0"
-            >
-              {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleLogout}
-              title="خروج"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#d5dce1] dark:border-[#33414d] hover:border-[#b83232] text-xs font-medium cursor-pointer whitespace-nowrap shrink-0"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">خروج</span>
-            </button>
+          <div className="pt-4 border-t border-[var(--ink-faint)] space-y-0.5">
+            <div className="text-xs font-bold text-[var(--ink)] truncate">{currentUser.name}</div>
+            <div className="text-[11px] text-[var(--ink-muted)] truncate">{roleSummary}</div>
+            <div className="text-[11px] text-[var(--ink-muted)] truncate">
+              {computerLabel} / {useCloud ? 'ابری' : 'آفلاین'}
+            </div>
           </div>
-        </div>
+        </aside>
 
-        {/* Mobile Nav */}
-        <nav className="no-print lg:hidden border-t border-[#d5dce1] dark:border-[#33414d] px-2 py-1.5 flex gap-1 overflow-x-auto">
-          {navItems.map(({ id, label }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => navigate(id)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer ${
-                view === id
-                  ? 'bg-[#0e6a88] text-white font-bold'
-                  : 'text-[#5a6a78] dark:text-[#9aabb8]'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </nav>
-      </header>
+        {/* Main Column */}
+        <div className="flex flex-col min-w-0 min-h-0">
+          {/* Mobile Brand + Nav Strip */}
+          <div className="no-print lg:hidden bg-[var(--surface)] border-b border-[var(--ink-faint)]">
+            <div className="px-4 h-14 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-[var(--accent)] text-[var(--accent-fg)] grid place-items-center font-black text-base shrink-0 shadow-[0_0_14px_var(--accent-soft)]">
+                  ر
+                </div>
+                <span className="font-black text-base whitespace-nowrap">روان‌سنج صنعتی</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDark((d) => !d)}
+                  title="تغییر پوسته"
+                  className="p-2 rounded-lg bg-[var(--ink-faint)] border border-[var(--ink-faint)] text-[var(--ink)] hover:border-[var(--accent)]/40 cursor-pointer shrink-0"
+                >
+                  {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  title="خروج از سیستم"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--ink-faint)] border border-[var(--ink-faint)] text-[#dc2626] dark:text-[#f87171] text-xs font-bold cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>خروج</span>
+                </button>
+              </div>
+            </div>
 
-      {/* Main Workspace */}
-      <div className="flex-1 max-w-[1380px] w-full mx-auto px-4 py-5 flex gap-6">
-        {/* Desktop Sidebar */}
-        <aside className="no-print hidden lg:flex flex-col w-60 shrink-0">
-          <nav className="sticky top-20 space-y-1">
-            {navItems.map(({ id, label, Icon }) => {
-              const active = view === id;
-              return (
+            <nav className="px-3 pb-2.5 flex gap-1.5 overflow-x-auto">
+              {navItems.map(({ id, label }) => (
                 <button
                   key={id}
                   type="button"
                   onClick={() => navigate(id)}
-                  className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-sm text-right cursor-pointer transition-colors whitespace-nowrap ${
-                    active
-                      ? 'bg-[#0e6a88] text-white font-bold'
-                      : 'text-[#1b2733] dark:text-[#e6ecf0] hover:bg-white dark:hover:bg-[#1b242c]'
+                  className={`px-3 py-1.5 rounded-lg text-xs whitespace-nowrap shrink-0 cursor-pointer transition-colors ${
+                    view === id
+                      ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-bold'
+                      : 'text-[var(--ink-muted)] hover:bg-[var(--ink-faint)] hover:text-[var(--ink)] font-medium'
                   }`}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span>{label}</span>
+                  {label}
                 </button>
-              );
-            })}
+              ))}
+            </nav>
+          </div>
 
-            <div className="pt-4 mt-4 border-t border-[#d5dce1] dark:border-[#33414d] px-2 text-xs text-[#5a6a78] dark:text-[#9aabb8] space-y-1">
-              <div className="truncate font-medium text-[#1b2733] dark:text-[#e6ecf0]">
-                {currentUser.name}
+          {/* Scrollable Dot-Matrix Content Area */}
+          <main className="dot-grid-canvas flex-1 overflow-y-auto px-4 sm:px-8 lg:px-12 py-6 sm:py-10">
+            <div className="max-w-[1140px] w-full space-y-8">
+              {/* Header Meta inside Main */}
+              <div className="no-print flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <h1 className="text-3xl sm:text-[2.75rem] font-black tracking-tight leading-tight text-balance bg-gradient-to-b from-[#0f172a] to-[#475569] dark:from-white dark:to-[#94a3b8] bg-clip-text text-transparent">
+                    {activeMeta.title}
+                  </h1>
+                  <p className="text-xs sm:text-sm text-[var(--ink-muted)] mt-2">
+                    {activeMeta.subtitle}
+                  </p>
+                </div>
+
+                <div className="hidden lg:flex items-center gap-2.5 shrink-0">
+                  {currentUser.hasResultAccess && workspaces.length > 1 && (
+                    <select
+                      aria-label="پایگاه داده فعال"
+                      value={activeWorkspace.id}
+                      onChange={(e) => handleSelectWorkspace(e.target.value)}
+                      className="max-w-[190px] px-3 py-2.5 rounded-lg border border-[var(--ink-faint)] bg-[var(--surface)] text-xs font-bold truncate"
+                    >
+                      {workspaces.map((ws) => (
+                        <option key={ws.id} value={ws.id}>
+                          {ws.org || 'پایگاه داده'}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setDark((d) => !d)}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/40 text-xs font-bold cursor-pointer whitespace-nowrap shrink-0 transition-colors"
+                  >
+                    {dark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+                    <span>تغییر پوسته</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[#f87171]/40 text-[#dc2626] dark:text-[#f87171] text-xs font-bold cursor-pointer whitespace-nowrap shrink-0 transition-colors"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>خروج</span>
+                  </button>
+                </div>
               </div>
-              <div className="truncate text-[11px]">
-                {currentUser.role === 'admin'
-                  ? 'مدیر ارشد'
-                  : currentUser.role === 'evaluator'
-                  ? 'ارزیاب / طب کار'
-                  : `واحد: ${currentUser.dept || 'عمومی'}`}
-              </div>
-              <div className="text-[11px] text-[#0e6a88] dark:text-[#4fb4d4]">
-                {useCloud ? 'اتصال ابری فعال' : 'ذخیره‌سازی محلی / آفلاین'}
-              </div>
+
+              {dataLoading && people.length === 0 ? (
+                <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-8 text-center text-sm text-[var(--ink-muted)]">
+                  در حال بارگذاری داده‌ها…
+                </div>
+              ) : (
+                <>
+                  {view === 'home' && currentUser.hasResultAccess && (
+                    <DashboardView
+                      people={people}
+                      results={results}
+                      computerLabel={computerLabel}
+                      useCloud={useCloud}
+                      onNavigate={navigate}
+                      onOpenCategory={(catId) => {
+                        setCategoryFilter(catId);
+                        navigate('people');
+                      }}
+                      onOpenPersonResults={(pid) => {
+                        setSelectedPersonId(pid);
+                        navigate('results');
+                      }}
+                    />
+                  )}
+
+                  {view === 'people' && currentUser.hasResultAccess && (
+                    <PeopleView
+                      useCloud={useCloud}
+                      firebaseUser={firebaseUser}
+                      currentUserId={currentUser.id}
+                      workspace={activeWorkspace}
+                      people={people}
+                      results={results}
+                      categoryFilter={categoryFilter}
+                      onChangeCategoryFilter={setCategoryFilter}
+                      onStartTestFor={(pid) => {
+                        setSelectedPersonId(pid);
+                        navigate('run');
+                      }}
+                      onViewResultsFor={(pid) => {
+                        setSelectedPersonId(pid);
+                        navigate('results');
+                      }}
+                      onToast={showToast}
+                    />
+                  )}
+
+                  {view === 'run' && (
+                    <RunTestView
+                      useCloud={useCloud}
+                      firebaseUser={firebaseUser}
+                      currentUserId={currentUser.id}
+                      canSelectAnyPerson={currentUser.hasResultAccess}
+                      workspace={activeWorkspace}
+                      computerLabel={computerLabel}
+                      people={currentUser.hasResultAccess ? people : ownPerson ? [ownPerson] : []}
+                      selectedPersonId={
+                        currentUser.hasResultAccess ? selectedPersonId : ownPerson?.id || null
+                      }
+                      onSelectPerson={setSelectedPersonId}
+                      onGoPeople={() => navigate('people')}
+                      onFinishAll={(pid) => {
+                        setSelectedPersonId(pid);
+                        navigate('results');
+                      }}
+                      onToast={showToast}
+                    />
+                  )}
+
+                  {view === 'results' && (
+                    <ResultsView
+                      useCloud={useCloud}
+                      canDelete={currentUser.hasResultAccess}
+                      workspace={activeWorkspace}
+                      people={currentUser.hasResultAccess ? people : ownPerson ? [ownPerson] : []}
+                      results={results}
+                      selectedPersonId={
+                        currentUser.hasResultAccess ? selectedPersonId : ownPerson?.id || null
+                      }
+                      onSelectPerson={setSelectedPersonId}
+                      onRunNewTest={() => navigate('run')}
+                      onToast={showToast}
+                    />
+                  )}
+
+                  {view === 'help' && <HelpView />}
+
+                  {view === 'settings' && currentUser.hasResultAccess && (
+                    <SettingsView
+                      useCloud={useCloud}
+                      firebaseUser={firebaseUser}
+                      currentUserId={currentUser.id}
+                      currentUserName={currentUser.name}
+                      workspaces={workspaces}
+                      activeWorkspace={activeWorkspace}
+                      onSelectWorkspace={handleSelectWorkspace}
+                      computerLabel={computerLabel}
+                      onChangeComputerLabel={handleComputerLabelChange}
+                      people={people}
+                      results={results}
+                      onToast={showToast}
+                    />
+                  )}
+                </>
+              )}
             </div>
-          </nav>
-        </aside>
-
-        {/* Main Content Viewport */}
-        <main className="flex-1 min-w-0">
-          {dataLoading && people.length === 0 ? (
-            <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-8 text-center text-sm text-[#5a6a78] dark:text-[#9aabb8]">
-              در حال بارگذاری داده‌ها…
-            </div>
-          ) : (
-            <>
-              {view === 'home' && currentUser.hasResultAccess && (
-                <DashboardView
-                  people={people}
-                  results={results}
-                  computerLabel={computerLabel}
-                  useCloud={useCloud}
-                  onNavigate={navigate}
-                  onOpenCategory={(catId) => {
-                    setCategoryFilter(catId);
-                    navigate('people');
-                  }}
-                  onOpenPersonResults={(pid) => {
-                    setSelectedPersonId(pid);
-                    navigate('results');
-                  }}
-                />
-              )}
-
-              {view === 'people' && currentUser.hasResultAccess && (
-                <PeopleView
-                  useCloud={useCloud}
-                  firebaseUser={firebaseUser}
-                  currentUserId={currentUser.id}
-                  workspace={activeWorkspace}
-                  people={people}
-                  results={results}
-                  categoryFilter={categoryFilter}
-                  onChangeCategoryFilter={setCategoryFilter}
-                  onStartTestFor={(pid) => {
-                    setSelectedPersonId(pid);
-                    navigate('run');
-                  }}
-                  onViewResultsFor={(pid) => {
-                    setSelectedPersonId(pid);
-                    navigate('results');
-                  }}
-                  onToast={showToast}
-                />
-              )}
-
-              {view === 'run' && (
-                <RunTestView
-                  useCloud={useCloud}
-                  firebaseUser={firebaseUser}
-                  currentUserId={currentUser.id}
-                  canSelectAnyPerson={currentUser.hasResultAccess}
-                  workspace={activeWorkspace}
-                  computerLabel={computerLabel}
-                  people={currentUser.hasResultAccess ? people : ownPerson ? [ownPerson] : []}
-                  selectedPersonId={
-                    currentUser.hasResultAccess ? selectedPersonId : ownPerson?.id || null
-                  }
-                  onSelectPerson={setSelectedPersonId}
-                  onGoPeople={() => navigate('people')}
-                  onFinishAll={(pid) => {
-                    setSelectedPersonId(pid);
-                    navigate('results');
-                  }}
-                  onToast={showToast}
-                />
-              )}
-
-              {view === 'results' && (
-                <ResultsView
-                  useCloud={useCloud}
-                  canDelete={currentUser.hasResultAccess}
-                  workspace={activeWorkspace}
-                  people={currentUser.hasResultAccess ? people : ownPerson ? [ownPerson] : []}
-                  results={results}
-                  selectedPersonId={
-                    currentUser.hasResultAccess ? selectedPersonId : ownPerson?.id || null
-                  }
-                  onSelectPerson={setSelectedPersonId}
-                  onRunNewTest={() => navigate('run')}
-                  onToast={showToast}
-                />
-              )}
-
-              {view === 'help' && <HelpView />}
-
-              {view === 'settings' && currentUser.hasResultAccess && (
-                <SettingsView
-                  useCloud={useCloud}
-                  firebaseUser={firebaseUser}
-                  currentUserId={currentUser.id}
-                  currentUserName={currentUser.name}
-                  workspaces={workspaces}
-                  activeWorkspace={activeWorkspace}
-                  onSelectWorkspace={handleSelectWorkspace}
-                  computerLabel={computerLabel}
-                  onChangeComputerLabel={handleComputerLabelChange}
-                  people={people}
-                  results={results}
-                  onToast={showToast}
-                />
-              )}
-            </>
-          )}
-        </main>
+          </main>
+        </div>
       </div>
+
+      {/* Footer */}
+      <footer className="no-print bg-[var(--surface)] border-t border-[var(--ink-faint)] px-4 sm:px-8 lg:px-12 py-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[var(--ink-muted)] shrink-0">
+        <span>سامانه روان‌سنج صنعتی و جایابی شغلی</span>
+        <span>
+          ابزارهای علمی (RIASEC, Mini-IPIP, DASS-21, OLBI, Epworth, PVT, Stroop)
+        </span>
+        <span className="mono">
+          {useCloud ? 'CLOUD-SYNC' : 'LOCAL-NODE'} · V{__APP_VERSION__}
+        </span>
+      </footer>
 
       {/* Toast */}
       {toastMsg && (
-        <div className="no-print fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-[#1b2733] text-white dark:bg-[#e6ecf0] dark:text-[#12181e] px-5 py-2.5 rounded-full font-bold text-sm shadow-lg whitespace-nowrap">
+        <div className="no-print fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-[var(--surface)] border border-[var(--accent)] text-[var(--ink)] px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg whitespace-nowrap">
           {toastMsg}
         </div>
       )}

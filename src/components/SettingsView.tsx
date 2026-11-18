@@ -307,20 +307,13 @@ export const SettingsView: React.FC<Props> = ({
   };
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-extrabold mb-1">تنظیمات، اشتراک‌گذاری و پشتیبان</h1>
-        <p className="text-sm text-[#5a6a78] dark:text-[#9aabb8]">
-          مدیریت پایگاه داده مشترک بین چند رایانه، مشخصات گزارش و خروجی اطلاعات.
-        </p>
-      </div>
-
+    <div className="space-y-6">
       {/* اطلاعات گزارش و این رایانه */}
       <form
         onSubmit={handleSaveMeta}
-        className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5 space-y-4"
+        className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6 space-y-4"
       >
-        <h2 className="text-lg font-bold">اطلاعات گزارش و نام این رایانه</h2>
+        <h2 className="text-lg font-extrabold">اطلاعات گزارش و نام این رایانه</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label htmlFor="so" className="block text-xs font-medium mb-1">
@@ -331,7 +324,7 @@ export const SettingsView: React.FC<Props> = ({
               value={org}
               maxLength={120}
               onChange={(e) => setOrg(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm"
             />
           </div>
           <div>
@@ -343,7 +336,7 @@ export const SettingsView: React.FC<Props> = ({
               value={examiner}
               maxLength={120}
               onChange={(e) => setExaminer(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm"
             />
           </div>
           <div>
@@ -356,31 +349,34 @@ export const SettingsView: React.FC<Props> = ({
               maxLength={80}
               placeholder="مثلاً: رایانه ۱ — اتاق طب کار"
               onChange={(e) => setStationInput(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm"
             />
           </div>
         </div>
         <button
           type="submit"
           disabled={savingMeta}
-          className="px-4 py-2 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-90 disabled:opacity-50 cursor-pointer text-sm"
+          className="px-5 py-2.5 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] shadow-[0_4px_12px_var(--accent-soft)] hover:opacity-90 disabled:opacity-50 cursor-pointer text-sm whitespace-nowrap"
         >
           {savingMeta ? 'در حال ذخیره…' : 'ذخیره'}
         </button>
       </form>
 
       {/* اشتراک‌گذاری بین چند رایانه */}
-      <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5 space-y-4">
+      <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6 space-y-4">
         <div>
-          <h2 className="text-lg font-bold">اتصال چند رایانه و همگام‌سازی ابری</h2>
+          <h2 className="text-lg font-extrabold">اتصال چند رایانه و همگام‌سازی ابری</h2>
           {useCloud ? (
-            <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8] mt-1 leading-6">
+            <p className="text-xs text-[var(--ink-muted)] mt-1 leading-6">
               حساب گوگل شما متصل است. روی تمام رایانه‌ها با همین حساب گوگل (
-              <span className="num-ltr font-semibold">{activeWorkspace.ownerEmail}</span>) وارد شوید
-              یا ایمیل همکاران را در زیر اضافه کنید تا هم‌زمان به همین پایگاه داده دسترسی داشته باشند.
+              <span className="num-ltr font-semibold text-[var(--ink)]">
+                {activeWorkspace.ownerEmail}
+              </span>
+              ) وارد شوید یا ایمیل همکاران را در زیر اضافه کنید تا هم‌زمان به همین پایگاه داده
+              دسترسی داشته باشند.
             </p>
           ) : (
-            <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8] mt-1 leading-6">
+            <p className="text-xs text-[var(--ink-muted)] mt-1 leading-6">
               شما در حال حاضر با نام کاربری محلی یا کد پرسنلی وارد شده‌اید؛ داده‌ها روی همین دستگاه
               ذخیره می‌شوند. برای انتقال اطلاعات بین چند رایانه بدون اینترنت/گوگل، از بخش «پشتیبان‌گیری
               و خروجی JSON» در پایین صفحه استفاده کنید.
@@ -390,14 +386,14 @@ export const SettingsView: React.FC<Props> = ({
 
         {useCloud && (
           <>
-            <div className="border-t border-[#d5dce1] dark:border-[#33414d] pt-3">
+            <div className="border-t border-[var(--ink-faint)] pt-3">
               <div className="text-xs font-bold mb-2">حساب‌های مجاز به این پایگاه داده:</div>
-              <ul className="divide-y divide-[#d5dce1] dark:divide-[#33414d] border border-[#d5dce1] dark:border-[#33414d] rounded-lg">
+              <ul className="divide-y divide-[var(--ink-faint)] border border-[var(--ink-faint)] rounded-xl bg-[var(--bg)]">
                 {activeWorkspace.allowedEmails.map((em) => (
-                  <li key={em} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                  <li key={em} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="num-ltr truncate">{em}</span>
-                      <span className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
+                      <span className="text-xs text-[var(--ink-muted)]">
                         {em === activeWorkspace.ownerEmail ? '· مالک' : '· همکار مجاز'}
                       </span>
                     </div>
@@ -406,7 +402,7 @@ export const SettingsView: React.FC<Props> = ({
                         type="button"
                         disabled={savingEmails}
                         onClick={() => handleRemoveEmail(em)}
-                        className="px-2.5 py-1 text-xs rounded border border-[#b83232] text-[#b83232] dark:text-[#f07a7a] dark:border-[#f07a7a] cursor-pointer whitespace-nowrap"
+                        className="px-2.5 py-1 text-xs rounded-lg border border-[#dc2626]/40 text-[#dc2626] dark:text-[#f87171] dark:border-[#f87171]/40 cursor-pointer whitespace-nowrap"
                       >
                         لغو دسترسی
                       </button>
@@ -424,18 +420,18 @@ export const SettingsView: React.FC<Props> = ({
                   placeholder="colleague@gmail.com"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  className="flex-1 min-w-[220px] px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+                  className="flex-1 min-w-[220px] px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm num-ltr"
                 />
                 <button
                   type="submit"
                   disabled={savingEmails}
-                  className="px-4 py-2 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-90 disabled:opacity-50 cursor-pointer text-sm whitespace-nowrap"
+                  className="px-4 py-2 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] shadow-[0_4px_12px_var(--accent-soft)] hover:opacity-90 disabled:opacity-50 cursor-pointer text-sm whitespace-nowrap"
                 >
                   {savingEmails ? 'در حال همگام‌سازی…' : '+ افزودن رایانه / همکار'}
                 </button>
               </form>
             ) : (
-              <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
+              <p className="text-xs text-[var(--ink-muted)]">
                 فقط مالک پایگاه داده می‌تواند ایمیل همکاران جدید را اضافه یا حذف کند.
               </p>
             )}
@@ -444,18 +440,18 @@ export const SettingsView: React.FC<Props> = ({
       </div>
 
       {/* تغییر یا ایجاد پایگاه داده */}
-      <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5 space-y-3">
-        <h2 className="text-lg font-bold">پایگاه‌های داده‌ی در دسترس شما</h2>
+      <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6 space-y-3">
+        <h2 className="text-lg font-extrabold">پایگاه‌های داده‌ی در دسترس شما</h2>
         <div className="flex flex-wrap items-center gap-2">
           {workspaces.map((ws) => (
             <button
               key={ws.id}
               type="button"
               onClick={() => onSelectWorkspace(ws.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold border cursor-pointer whitespace-nowrap ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold border cursor-pointer whitespace-nowrap transition-colors ${
                 ws.id === activeWorkspace.id
-                  ? 'bg-[#0e6a88] border-[#0e6a88] text-white'
-                  : 'border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88]'
+                  ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--accent-fg)]'
+                  : 'bg-[var(--ink-faint)] border-[var(--ink-faint)] hover:border-[var(--accent)]/40'
               }`}
             >
               {ws.org || 'پایگاه داده بدون نام'} ({faDigits(ws.allowedEmails.length)} کاربر)
@@ -468,12 +464,12 @@ export const SettingsView: React.FC<Props> = ({
             maxLength={120}
             placeholder="نام سازمان برای پایگاه داده جدید (مثلاً شعبه‌ی دوم)"
             onChange={(e) => setNewWsOrg(e.target.value)}
-            className="flex-1 min-w-[240px] px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+            className="flex-1 min-w-[240px] px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm"
           />
           <button
             type="submit"
             disabled={creatingWs}
-            className="px-4 py-2 rounded-lg font-bold border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer text-sm whitespace-nowrap"
+            className="px-4 py-2 rounded-lg font-bold bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/40 cursor-pointer text-sm whitespace-nowrap transition-colors"
           >
             + ایجاد پایگاه داده مجزا
           </button>
@@ -482,8 +478,8 @@ export const SettingsView: React.FC<Props> = ({
 
       {/* انتقال داده قدیمی مرورگر (در صورت وجود) */}
       {legacyLocalData && (
-        <div className="rounded-[10px] border border-[#0e6a88] bg-[#dcedf3] dark:bg-[#17323d] p-4 text-sm space-y-2">
-          <b>داده‌های قدیمی روی این رایانه یافت شد</b>
+        <div className="rounded-2xl border border-[var(--accent)] bg-[var(--accent-soft)] p-5 text-sm space-y-2">
+          <b className="text-[var(--accent)]">داده‌های قدیمی روی این رایانه یافت شد</b>
           <p className="text-xs">
             در حافظه‌ی محلی این مرورگر ({faDigits(legacyLocalData.people.length)} پرونده) از نسخه‌ی
             تک‌رایانه‌ی قبلی وجود دارد. می‌توانید آن‌ها را به پایگاه داده مشترک ابری منتقل کنید تا
@@ -492,7 +488,7 @@ export const SettingsView: React.FC<Props> = ({
           <button
             type="button"
             onClick={() => setRestoreDialog(legacyLocalData)}
-            className="px-3.5 py-1.5 rounded-lg font-bold bg-[#0e6a88] text-white text-xs cursor-pointer"
+            className="px-3.5 py-1.5 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] text-xs cursor-pointer"
           >
             انتقال داده‌های محلی به پایگاه داده مشترک
           </button>
@@ -500,9 +496,9 @@ export const SettingsView: React.FC<Props> = ({
       )}
 
       {/* پشتیبان‌گیری و خروجی */}
-      <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5 space-y-3">
-        <h2 className="text-lg font-bold">پشتیبان‌گیری و خروجی</h2>
-        <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
+      <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6 space-y-3">
+        <h2 className="text-lg font-extrabold">پشتیبان‌گیری و خروجی</h2>
+        <p className="text-xs text-[var(--ink-muted)]">
           گرفتن پشتیبان دوره‌ای و نگهداری فایل در محل امن توصیه می‌شود (فایل شامل اطلاعات حساس
           کارکنان است).
         </p>
@@ -510,18 +506,18 @@ export const SettingsView: React.FC<Props> = ({
           <button
             type="button"
             onClick={handleExportJSON}
-            className="px-4 py-2 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-90 cursor-pointer text-sm whitespace-nowrap"
+            className="px-4 py-2 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] shadow-[0_4px_12px_var(--accent-soft)] hover:opacity-90 cursor-pointer text-sm whitespace-nowrap"
           >
             دریافت پشتیبان (JSON)
           </button>
           <button
             type="button"
             onClick={handleExportCSV}
-            className="px-4 py-2 rounded-lg font-bold border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer text-sm whitespace-nowrap"
+            className="px-4 py-2 rounded-lg font-bold bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/40 cursor-pointer text-sm whitespace-nowrap transition-colors"
           >
             خروجی جدول (CSV برای Excel)
           </button>
-          <label className="px-4 py-2 rounded-lg font-bold border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer text-sm whitespace-nowrap">
+          <label className="px-4 py-2 rounded-lg font-bold bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/40 cursor-pointer text-sm whitespace-nowrap transition-colors">
             بازیابی از پشتیبان
             <input
               type="file"
@@ -534,15 +530,15 @@ export const SettingsView: React.FC<Props> = ({
       </div>
 
       {/* پاک‌سازی */}
-      <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5 space-y-3">
-        <h2 className="text-lg font-bold">پاک‌سازی</h2>
-        <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
+      <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6 space-y-3">
+        <h2 className="text-lg font-extrabold">پاک‌سازی</h2>
+        <p className="text-xs text-[var(--ink-muted)]">
           حذف همه‌ی افراد و نتایج این پایگاه داده مشترک. قابل بازگشت نیست مگر پشتیبان داشته باشید.
         </p>
         <button
           type="button"
           onClick={() => setWipeConfirm(true)}
-          className="px-4 py-2 rounded-lg font-bold border border-[#b83232] text-[#b83232] dark:border-[#f07a7a] dark:text-[#f07a7a] cursor-pointer text-sm"
+          className="px-4 py-2 rounded-lg font-bold border border-[#dc2626]/40 text-[#dc2626] dark:border-[#f87171]/40 dark:text-[#f87171] hover:bg-[#dc2626]/10 cursor-pointer text-sm"
         >
           حذف همه‌ی داده‌ها
         </button>
@@ -550,10 +546,10 @@ export const SettingsView: React.FC<Props> = ({
 
       {/* مودال بازیابی پشتیبان */}
       {restoreDialog && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#1b242c] border border-[#d5dce1] dark:border-[#33414d] rounded-xl max-w-md w-full p-6 space-y-4">
-            <h2 className="text-lg font-bold">بازیابی پشتیبان در پایگاه داده مشترک</h2>
-            <p className="text-sm">
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+          <div className="bg-[var(--surface)] border border-[var(--ink-faint)] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <h2 className="text-lg font-extrabold">بازیابی پشتیبان در پایگاه داده مشترک</h2>
+            <p className="text-sm text-[var(--ink-muted)]">
               {faDigits(restoreDialog.people.length)} فرد در فایل است. داده‌های فعلی جایگزین شود یا
               با آنها ادغام شود؟
             </p>
@@ -562,7 +558,7 @@ export const SettingsView: React.FC<Props> = ({
                 type="button"
                 disabled={busyAction}
                 onClick={() => executeImport('replace')}
-                className="px-4 py-2 rounded-lg font-bold bg-[#0e6a88] text-white text-sm cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] text-sm cursor-pointer disabled:opacity-50"
               >
                 جایگزین
               </button>
@@ -570,7 +566,7 @@ export const SettingsView: React.FC<Props> = ({
                 type="button"
                 disabled={busyAction}
                 onClick={() => executeImport('merge')}
-                className="px-4 py-2 rounded-lg font-bold border border-[#d5dce1] dark:border-[#33414d] text-sm cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 rounded-lg font-bold bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/40 text-sm cursor-pointer disabled:opacity-50"
               >
                 ادغام
               </button>
@@ -578,7 +574,7 @@ export const SettingsView: React.FC<Props> = ({
                 type="button"
                 disabled={busyAction}
                 onClick={() => setRestoreDialog(null)}
-                className="px-4 py-2 rounded-lg font-bold border border-[#d5dce1] dark:border-[#33414d] text-sm cursor-pointer"
+                className="px-4 py-2 rounded-lg font-bold bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/40 text-sm cursor-pointer"
               >
                 انصراف
               </button>
@@ -589,10 +585,10 @@ export const SettingsView: React.FC<Props> = ({
 
       {/* مودال تایید پاک‌سازی */}
       {wipeConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#1b242c] border border-[#d5dce1] dark:border-[#33414d] rounded-xl max-w-md w-full p-6 space-y-4">
-            <h2 className="text-lg font-bold">حذف همه‌ی داده‌ها؟</h2>
-            <p className="text-sm">
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+          <div className="bg-[var(--surface)] border border-[var(--ink-faint)] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <h2 className="text-lg font-extrabold">حذف همه‌ی داده‌ها؟</h2>
+            <p className="text-sm text-[var(--ink-muted)]">
               این کار تمام پرونده‌ها و نتایج را برای همه‌ی رایانه‌های متصل به این پایگاه داده حذف
               می‌کند و برگشت‌پذیر نیست.
             </p>
@@ -601,7 +597,7 @@ export const SettingsView: React.FC<Props> = ({
                 type="button"
                 disabled={busyAction}
                 onClick={executeWipe}
-                className="px-4 py-2 rounded-lg font-bold bg-[#b83232] text-white text-sm cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 rounded-lg font-bold bg-[#dc2626] text-white text-sm cursor-pointer disabled:opacity-50"
               >
                 {busyAction ? 'در حال حذف…' : 'بله، حذف شود'}
               </button>
@@ -609,7 +605,7 @@ export const SettingsView: React.FC<Props> = ({
                 type="button"
                 disabled={busyAction}
                 onClick={() => setWipeConfirm(false)}
-                className="px-4 py-2 rounded-lg font-bold border border-[#d5dce1] dark:border-[#33414d] text-sm cursor-pointer"
+                className="px-4 py-2 rounded-lg font-bold bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/40 text-sm cursor-pointer"
               >
                 انصراف
               </button>

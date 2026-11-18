@@ -355,25 +355,27 @@ export const PeopleView: React.FC<Props> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2.5">
-        <h1 className="text-2xl font-extrabold">پرسنل و داوطلبان</h1>
+        <div className="text-xs text-[var(--ink-muted)] font-medium">
+          مدیریت پرونده‌ها و واحدهای سازمانی
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setShowCustomUnitsPanel((s) => !s)}
-            className="px-3 py-2 rounded-lg font-bold border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer text-xs whitespace-nowrap shrink-0"
+            className="px-3.5 py-2 rounded-lg font-bold bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/40 cursor-pointer text-xs whitespace-nowrap shrink-0 transition-colors"
           >
             {showCustomUnitsPanel ? 'بستن واحدهای سفارشی' : '+ واحدهای کاری سفارشی سازمان'}
           </button>
           <button
             type="button"
             onClick={handleDownloadCsvTemplate}
-            className="px-3 py-2 rounded-lg font-bold border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer text-xs whitespace-nowrap shrink-0"
+            className="px-3.5 py-2 rounded-lg font-bold bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/40 cursor-pointer text-xs whitespace-nowrap shrink-0 transition-colors"
           >
             دانلود قالب اکسل (CSV)
           </button>
-          <label className="px-3.5 py-2 rounded-lg font-bold border border-[#0e6a88] text-[#0e6a88] dark:text-[#4fb4d4] hover:bg-[#dcedf3]/50 dark:hover:bg-[#17323d]/60 cursor-pointer text-xs whitespace-nowrap shrink-0">
+          <label className="px-3.5 py-2 rounded-lg font-bold border border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] hover:opacity-90 cursor-pointer text-xs whitespace-nowrap shrink-0 transition-opacity">
             {importingCsv ? 'در حال بارگذاری…' : 'ورود دسته‌جمعی پرسنل (CSV / اکسل)'}
             <input
               type="file"
@@ -387,10 +389,12 @@ export const PeopleView: React.FC<Props> = ({
       </div>
 
       {showCustomUnitsPanel && (
-        <div className="rounded-[10px] border border-[#0e6a88] bg-white dark:bg-[#1b242c] p-5 space-y-3">
+        <div className="rounded-2xl border border-[var(--accent)]/60 bg-[var(--surface)] p-5 sm:p-6 space-y-3">
           <div>
-            <h2 className="text-base font-bold">مدیریت واحدهای کاری سفارشی سازمان</h2>
-            <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
+            <h2 className="text-base font-extrabold text-[var(--accent)]">
+              مدیریت واحدهای کاری سفارشی سازمان
+            </h2>
+            <p className="text-xs text-[var(--ink-muted)] mt-0.5">
               علاوه بر {faDigits(allWorkUnits.length)} واحد پیش‌فرض، می‌توانید واحدهای اختصاصی سازمان
               خود (مثلاً واحد حقوقی، مرکز تماس، کلینیک، توسعه محصول) را تعریف کنید تا در تحلیل جایابی
               شغلی محاسبه شوند.
@@ -403,13 +407,13 @@ export const PeopleView: React.FC<Props> = ({
               placeholder="نام واحد جدید (مثلاً: واحد حقوقی)"
               value={customUnitName}
               onChange={(e) => setCustomUnitName(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-xs"
+              className="px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-xs"
             />
             <select
               aria-label="گروه شغلی"
               value={customUnitCat}
               onChange={(e) => setCustomUnitCat(e.target.value as OccupationalCategoryId)}
-              className="px-2.5 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-xs"
+              className="px-2.5 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-xs"
             >
               {OCCUPATIONAL_CATEGORIES.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -421,7 +425,7 @@ export const PeopleView: React.FC<Props> = ({
               aria-label="ماهیت محیط کار"
               value={customUnitSetting}
               onChange={(e) => setCustomUnitSetting(e.target.value as WorkSettingType)}
-              className="px-2.5 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-xs"
+              className="px-2.5 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-xs"
             >
               {(Object.keys(WORK_SETTING_LABEL) as WorkSettingType[]).map((k) => (
                 <option key={k} value={k}>
@@ -431,25 +435,25 @@ export const PeopleView: React.FC<Props> = ({
             </select>
             <button
               type="submit"
-              className="px-4 py-2 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-90 cursor-pointer text-xs whitespace-nowrap"
+              className="px-4 py-2 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] shadow-[0_4px_12px_var(--accent-soft)] hover:opacity-90 cursor-pointer text-xs whitespace-nowrap"
             >
               + افزودن واحد
             </button>
           </form>
 
           {customWorkUnits.length > 0 && (
-            <div className="pt-2 border-t border-[#d5dce1] dark:border-[#33414d] flex flex-wrap gap-2">
+            <div className="pt-2 border-t border-[var(--ink-faint)] flex flex-wrap gap-2">
               {customWorkUnits.map((cu) => (
                 <div
                   key={cu.name}
-                  className="flex items-center gap-2 px-2.5 py-1 rounded-md border border-[#d5dce1] dark:border-[#33414d] bg-[#f4f6f7] dark:bg-[#222d36] text-xs"
+                  className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-[var(--ink-faint)] bg-[var(--bg)] text-xs"
                 >
                   <span className="font-bold">{cu.name}</span>
-                  <span className="text-[#5a6a78] dark:text-[#9aabb8]">({cu.workSettingLabel})</span>
+                  <span className="text-[var(--ink-muted)]">({cu.workSettingLabel})</span>
                   <button
                     type="button"
                     onClick={() => handleDeleteCustomUnit(cu.name)}
-                    className="text-[#b83232] dark:text-[#f07a7a] font-bold cursor-pointer"
+                    className="text-[#dc2626] dark:text-[#f87171] font-bold cursor-pointer"
                   >
                     حذف
                   </button>
@@ -466,8 +470,8 @@ export const PeopleView: React.FC<Props> = ({
         ))}
       </datalist>
 
-      <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5">
-        <h2 className="text-lg font-bold mb-3">ثبت فرد جدید</h2>
+      <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6">
+        <h2 className="text-lg font-extrabold mb-3">ثبت فرد جدید</h2>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
             <label htmlFor="pn" className="block text-xs font-medium mb-1">
@@ -479,7 +483,7 @@ export const PeopleView: React.FC<Props> = ({
               maxLength={120}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm"
             />
           </div>
           <div>
@@ -492,7 +496,7 @@ export const PeopleView: React.FC<Props> = ({
               maxLength={40}
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm num-ltr text-right"
             />
           </div>
           <div>
@@ -503,7 +507,7 @@ export const PeopleView: React.FC<Props> = ({
               id="pk"
               value={kind}
               onChange={(e) => setKind(e.target.value as PersonKind)}
-              className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm"
             >
               <option value="candidate">داوطلب استخدام</option>
               <option value="employee">شاغل (پرسنل)</option>
@@ -520,7 +524,7 @@ export const PeopleView: React.FC<Props> = ({
               placeholder="مثلاً: منابع انسانی، فروش، اداری، برق…"
               value={dept}
               onChange={(e) => setDept(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm"
             />
           </div>
           <div>
@@ -532,7 +536,7 @@ export const PeopleView: React.FC<Props> = ({
               maxLength={100}
               value={job}
               onChange={(e) => setJob(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm"
             />
           </div>
           <div>
@@ -546,7 +550,7 @@ export const PeopleView: React.FC<Props> = ({
               max={80}
               value={age}
               onChange={(e) => setAge(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm num-ltr text-right"
             />
           </div>
 
@@ -556,7 +560,7 @@ export const PeopleView: React.FC<Props> = ({
                 type="checkbox"
                 checked={consent}
                 onChange={(e) => setConsent(e.target.checked)}
-                className="w-4 h-4 accent-[#0e6a88]"
+                className="w-4 h-4 accent-[var(--accent)]"
               />
               <span>رضایت آگاهانه گرفته شد (فرد از هدف آزمون و محرمانگی نتایج آگاه است)</span>
             </label>
@@ -566,7 +570,7 @@ export const PeopleView: React.FC<Props> = ({
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 rounded-lg font-bold bg-[#0e6a88] text-white hover:opacity-90 disabled:opacity-50 cursor-pointer text-sm"
+              className="px-5 py-2.5 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] shadow-[0_4px_12px_var(--accent-soft)] hover:opacity-90 disabled:opacity-50 cursor-pointer text-sm whitespace-nowrap"
             >
               {saving ? 'در حال ذخیره…' : 'ذخیره'}
             </button>
@@ -574,15 +578,15 @@ export const PeopleView: React.FC<Props> = ({
         </form>
       </div>
 
-      <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5 space-y-3">
+      <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6 space-y-4">
         <div className="flex flex-wrap items-center gap-2.5">
-          <h2 className="text-lg font-bold tabular-nums">فهرست ({faDigits(filtered.length)})</h2>
+          <h2 className="text-lg font-extrabold tabular-nums">فهرست ({faDigits(filtered.length)})</h2>
           <div className="flex-1" />
           <input
             placeholder="جستجو (نام، کد، واحد)"
             value={filterText}
             onChange={(e) => setFilterText(e.target.value)}
-            className="w-full sm:w-[210px] px-3 py-1.5 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+            className="w-full sm:w-[210px] px-3 py-1.5 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm"
           />
           <select
             aria-label="فیلتر رده شغلی"
@@ -591,7 +595,7 @@ export const PeopleView: React.FC<Props> = ({
               onChangeCategoryFilter(e.target.value as '' | OccupationalCategoryId);
               setUnitFilter('');
             }}
-            className="px-2.5 py-1.5 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-xs font-medium"
+            className="px-2.5 py-1.5 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-xs font-medium"
           >
             <option value="">همه‌ی گروه‌های شغلی (۷ گروه)</option>
             {OCCUPATIONAL_CATEGORIES.map((c) => (
@@ -604,7 +608,7 @@ export const PeopleView: React.FC<Props> = ({
             aria-label="فیلتر واحد کاری"
             value={unitFilter}
             onChange={(e) => setUnitFilter(e.target.value)}
-            className="px-2.5 py-1.5 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-xs font-medium max-w-[200px]"
+            className="px-2.5 py-1.5 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-xs font-medium max-w-[200px]"
           >
             <option value="">همه‌ی واحدهای کاری ({faDigits(unitsInActiveCategory.length)})</option>
             {unitsInActiveCategory.map((u) => (
@@ -613,7 +617,7 @@ export const PeopleView: React.FC<Props> = ({
               </option>
             ))}
           </select>
-          <div className="flex items-center gap-1 p-1 rounded-lg bg-[#f4f6f7] dark:bg-[#222d36]">
+          <div className="flex items-center gap-1 p-1 rounded-lg bg-[var(--bg)] border border-[var(--ink-faint)]">
             {[
               { id: '', label: 'همه' },
               { id: 'candidate', label: 'داوطلبان' },
@@ -625,8 +629,8 @@ export const PeopleView: React.FC<Props> = ({
                 onClick={() => setKindFilter(tab.id as '' | PersonKind)}
                 className={`px-3 py-1 text-xs font-medium rounded-md cursor-pointer whitespace-nowrap transition-colors ${
                   kindFilter === tab.id
-                    ? 'bg-white dark:bg-[#1b242c] text-[#1b2733] dark:text-[#e6ecf0] shadow-xs font-bold'
-                    : 'text-[#5a6a78] dark:text-[#9aabb8] hover:text-[#1b2733]'
+                    ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-bold'
+                    : 'text-[var(--ink-muted)] hover:text-[var(--ink)]'
                 }`}
               >
                 {tab.label}
@@ -640,12 +644,12 @@ export const PeopleView: React.FC<Props> = ({
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-sm min-w-[600px]">
                 <thead>
-                  <tr className="bg-[#f4f6f7] dark:bg-[#222d36] text-[#5a6a78] dark:text-[#9aabb8]">
-                    <th className="text-right p-2.5 font-medium">نام</th>
-                    <th className="text-right p-2.5 font-medium">وضعیت</th>
-                    <th className="text-right p-2.5 font-medium">واحد کاری / رده شغلی</th>
-                    <th className="text-right p-2.5 font-medium">آزمون‌ها</th>
-                    <th className="text-right p-2.5 font-medium">اقدامات</th>
+                  <tr className="bg-[var(--bg)]/60 border-b border-[var(--ink-faint)] text-[var(--ink-muted)] text-xs">
+                    <th className="text-right p-3 font-bold">نام</th>
+                    <th className="text-right p-3 font-bold">وضعیت</th>
+                    <th className="text-right p-3 font-bold">واحد کاری / رده شغلی</th>
+                    <th className="text-right p-3 font-bold">آزمون‌ها</th>
+                    <th className="text-right p-3 font-bold">اقدامات</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -655,12 +659,12 @@ export const PeopleView: React.FC<Props> = ({
                     return (
                       <tr
                         key={p.id}
-                        className="border-b border-[#d5dce1] dark:border-[#33414d] align-top"
+                        className="border-b border-[var(--ink-faint)] last:border-b-0 align-top hover:bg-[var(--ink-faint)]/30 transition-colors"
                       >
                         <td className="p-2.5">
                           <div className="font-bold">{p.name}</div>
                           {p.code && (
-                            <div className="text-xs text-[#5a6a78] dark:text-[#9aabb8] tabular-nums">
+                            <div className="text-xs text-[var(--ink-muted)] num-ltr text-right">
                               {p.code}
                             </div>
                           )}
@@ -669,8 +673,8 @@ export const PeopleView: React.FC<Props> = ({
                           <span
                             className={
                               p.kind === 'candidate'
-                                ? 'text-[#0e6a88] dark:text-[#4fb4d4] font-semibold'
-                                : 'text-[#5a6a78] dark:text-[#9aabb8]'
+                                ? 'text-[var(--accent)] font-semibold'
+                                : 'text-[var(--ink-muted)]'
                             }
                           >
                             {KIND_LABEL[p.kind]}
@@ -679,39 +683,39 @@ export const PeopleView: React.FC<Props> = ({
                         <td className="p-2.5 text-xs">
                           <div className="font-medium">{p.dept || '—'}</div>
                           {(cat || p.job) && (
-                            <div className="text-[#5a6a78] dark:text-[#9aabb8]">
+                            <div className="text-[var(--ink-muted)]">
                               {[cat?.workSettingLabel, p.job].filter(Boolean).join(' · ')}
                             </div>
                           )}
                         </td>
-                        <td className="p-2.5 tabular-nums">{faDigits(count)}</td>
+                        <td className="p-2.5 num-ltr tabular-nums text-right">{faDigits(count)}</td>
                         <td className="p-2.5">
                           <div className="flex flex-wrap gap-1.5">
                             <button
                               type="button"
                               onClick={() => onStartTestFor(p.id)}
-                              className="px-2.5 py-1 text-xs rounded-md border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer whitespace-nowrap"
+                              className="px-2.5 py-1 text-xs rounded-lg bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/50 cursor-pointer whitespace-nowrap"
                             >
                               آزمون
                             </button>
                             <button
                               type="button"
                               onClick={() => onViewResultsFor(p.id)}
-                              className="px-2.5 py-1 text-xs rounded-md border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer whitespace-nowrap"
+                              className="px-2.5 py-1 text-xs rounded-lg bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/50 cursor-pointer whitespace-nowrap"
                             >
                               نتایج
                             </button>
                             <button
                               type="button"
                               onClick={() => setEditing({ ...p })}
-                              className="px-2.5 py-1 text-xs rounded-md border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] cursor-pointer whitespace-nowrap"
+                              className="px-2.5 py-1 text-xs rounded-lg bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/50 cursor-pointer whitespace-nowrap"
                             >
                               ویرایش
                             </button>
                             <button
                               type="button"
                               onClick={() => setDeleting(p)}
-                              className="px-2.5 py-1 text-xs rounded-md border border-[#b83232] text-[#b83232] dark:border-[#f07a7a] dark:text-[#f07a7a] cursor-pointer whitespace-nowrap"
+                              className="px-2.5 py-1 text-xs rounded-lg border border-[#dc2626]/40 text-[#dc2626] dark:border-[#f87171]/40 dark:text-[#f87171] hover:bg-[#dc2626]/10 cursor-pointer whitespace-nowrap"
                             >
                               حذف
                             </button>
@@ -728,7 +732,7 @@ export const PeopleView: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={() => setShowAllRows((s) => !s)}
-                  className="px-4 py-1.5 rounded-lg border border-[#d5dce1] dark:border-[#33414d] hover:border-[#0e6a88] text-xs font-bold cursor-pointer"
+                  className="px-4 py-1.5 rounded-lg bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/40 text-xs font-bold cursor-pointer"
                 >
                   {showAllRows
                     ? 'نمایش کمتر (۶۰ ردیف اول)'
@@ -738,7 +742,7 @@ export const PeopleView: React.FC<Props> = ({
             )}
           </>
         ) : (
-          <p className="text-sm text-[#5a6a78] dark:text-[#9aabb8]">
+          <p className="text-sm text-[var(--ink-muted)]">
             فردی ثبت نشده یا با فیلتر فعلی یافت نشد. از فرم بالا برای ثبت تکی یا از دکمه‌ی «ورود
             دسته‌جمعی پرسنل (CSV / اکسل)» برای بارگذاری لیست کارکنان سازمان استفاده کنید.
           </p>
@@ -747,12 +751,12 @@ export const PeopleView: React.FC<Props> = ({
 
       {/* ویرایش پرونده */}
       {editing && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
           <form
             onSubmit={handleSaveEdit}
-            className="bg-white dark:bg-[#1b242c] border border-[#d5dce1] dark:border-[#33414d] rounded-xl max-w-lg w-full p-6 space-y-3"
+            className="bg-[var(--surface)] border border-[var(--ink-faint)] rounded-2xl max-w-lg w-full p-6 space-y-3 shadow-2xl"
           >
-            <h2 className="text-lg font-bold">ویرایش اطلاعات {editing.name}</h2>
+            <h2 className="text-lg font-extrabold">ویرایش اطلاعات {editing.name}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium mb-1">نام *</label>
@@ -761,7 +765,7 @@ export const PeopleView: React.FC<Props> = ({
                   maxLength={120}
                   value={editing.name}
                   onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm"
                 />
               </div>
               <div>
@@ -770,7 +774,7 @@ export const PeopleView: React.FC<Props> = ({
                   maxLength={40}
                   value={editing.code}
                   onChange={(e) => setEditing({ ...editing, code: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm num-ltr text-right"
                 />
               </div>
               <div>
@@ -778,7 +782,7 @@ export const PeopleView: React.FC<Props> = ({
                 <select
                   value={editing.kind}
                   onChange={(e) => setEditing({ ...editing, kind: e.target.value as PersonKind })}
-                  className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm"
                 >
                   <option value="candidate">داوطلب استخدام</option>
                   <option value="employee">شاغل (پرسنل)</option>
@@ -792,7 +796,7 @@ export const PeopleView: React.FC<Props> = ({
                   max={80}
                   value={editing.age}
                   onChange={(e) => setEditing({ ...editing, age: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm"
                 />
               </div>
               <div>
@@ -802,7 +806,7 @@ export const PeopleView: React.FC<Props> = ({
                   maxLength={100}
                   value={editing.dept}
                   onChange={(e) => setEditing({ ...editing, dept: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm"
                 />
               </div>
               <div>
@@ -811,7 +815,7 @@ export const PeopleView: React.FC<Props> = ({
                   maxLength={100}
                   value={editing.job}
                   onChange={(e) => setEditing({ ...editing, job: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm"
                 />
               </div>
             </div>
@@ -819,14 +823,14 @@ export const PeopleView: React.FC<Props> = ({
               <button
                 type="submit"
                 disabled={busyModal}
-                className="px-4 py-2 rounded-lg font-bold bg-[#0e6a88] text-white text-sm cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] shadow-[0_4px_12px_var(--accent-soft)] text-sm cursor-pointer disabled:opacity-50"
               >
                 {busyModal ? 'در حال ذخیره…' : 'ذخیره تغییرات'}
               </button>
               <button
                 type="button"
                 onClick={() => setEditing(null)}
-                className="px-4 py-2 rounded-lg font-bold border border-[#d5dce1] dark:border-[#33414d] text-sm cursor-pointer"
+                className="px-4 py-2 rounded-lg font-bold bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/40 text-sm cursor-pointer"
               >
                 انصراف
               </button>
@@ -837,10 +841,10 @@ export const PeopleView: React.FC<Props> = ({
 
       {/* تأیید حذف */}
       {deleting && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#1b242c] border border-[#d5dce1] dark:border-[#33414d] rounded-xl max-w-md w-full p-6 space-y-4">
-            <h2 className="text-lg font-bold">حذف {deleting.name}</h2>
-            <p className="text-sm">
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+          <div className="bg-[var(--surface)] border border-[var(--ink-faint)] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <h2 className="text-lg font-extrabold">حذف {deleting.name}</h2>
+            <p className="text-sm text-[var(--ink-muted)]">
               تمام نتایج این فرد از پایگاه داده حذف می‌شود و قابل بازگشت نیست.
             </p>
             <div className="flex gap-2">
@@ -848,7 +852,7 @@ export const PeopleView: React.FC<Props> = ({
                 type="button"
                 disabled={busyModal}
                 onClick={handleConfirmDelete}
-                className="px-4 py-2 rounded-lg font-bold bg-[#b83232] text-white text-sm cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 rounded-lg font-bold bg-[#dc2626] text-white text-sm cursor-pointer disabled:opacity-50"
               >
                 {busyModal ? 'در حال حذف…' : 'حذف شود'}
               </button>
@@ -856,7 +860,7 @@ export const PeopleView: React.FC<Props> = ({
                 type="button"
                 disabled={busyModal}
                 onClick={() => setDeleting(null)}
-                className="px-4 py-2 rounded-lg font-bold border border-[#d5dce1] dark:border-[#33414d] text-sm cursor-pointer"
+                className="px-4 py-2 rounded-lg font-bold bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/40 text-sm cursor-pointer"
               >
                 انصراف
               </button>
