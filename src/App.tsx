@@ -156,7 +156,7 @@ export default function App() {
             creatingDefaultRef.current = true;
             void createWorkspace(
               firebaseUser,
-              'مجتمع صنعتی دانیال استیل — واحد ارزیابی',
+              'سازمان من — واحد ارزیابی و منابع انسانی',
               currentUser.name
             )
               .then((id) => {

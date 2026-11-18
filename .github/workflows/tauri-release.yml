@@ -1,4 +1,4 @@
-name: CI/CD — Build & Release Windows Desktop Installer
+name: CI/CD — Build & Release Windows + Android Installers
 
 on:
   push:
@@ -184,4 +184,141 @@ jobs:
           path: |
             src-tauri/target/release/bundle/**/*.exe
             src-tauri/target/release/bundle/**/*.msi
+          if-no-files-found: warn
+
+  build-android:
+    name: Build Android Installer (APK / AAB)
+    needs: version
+    if: github.event_name != 'pull_request' && needs.version.outputs.tag != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tagged release
+        if: needs.version.outputs.pushed_tag == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - name: Checkout commit (fallback if tag push was blocked)
+        if: needs.version.outputs.pushed_tag != 'true'
+        uses: actions/checkout@v4
+
+      - name: Apply bumped version manifests
+        uses: actions/download-artifact@v4
+        with:
+          name: version-manifests
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Java 17 (JDK)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK Platforms, Build-Tools & NDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018"
+
+      - name: Setup Rust stable toolchain with Android targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Initialize Tauri v2 Android project (if missing)
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+          NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/27.2.12479018
+          CI: true
+        run: |
+          if [ ! -d "src-tauri/gen/android" ]; then
+            npx --yes @tauri-apps/cli@2 android init --ci
+          fi
+
+      - name: Build Tauri v2 Android APK & AAB
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+          NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/27.2.12479018
+          CI: true
+        run: npx --yes @tauri-apps/cli@2 android build --apk --aab --ci
+
+      - name: Sign & package installable Android APK
+        id: sign
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          mkdir -p android-dist
+          KEYSTORE_FILE="/tmp/release-keystore.jks"
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 --decode > "$KEYSTORE_FILE"
+            ALIAS="${KEY_ALIAS:-ravansanj}"
+            PASS="${KEYSTORE_PASS:-ravansanj123}"
+            KPASS="${KEY_PASS:-$PASS}"
+          else
+            ALIAS="ravansanj"
+            PASS="ravansanj123"
+            KPASS="$PASS"
+            keytool -genkey -v -keystore "$KEYSTORE_FILE" \
+              -alias "$ALIAS" -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$PASS" -keypass "$KPASS" \
+              -dname "CN=Ravansanj Sanati, OU=Assessment, O=Workplace Psychometrics, L=Tehran, C=IR"
+          fi
+
+          APKSIGNER="${ANDROID_SDK_ROOT}/build-tools/35.0.0/apksigner"
+          ZIPALIGN="${ANDROID_SDK_ROOT}/build-tools/35.0.0/zipalign"
+          VER="${{ needs.version.outputs.version }}"
+
+          UNSIGNED_APK=$(find src-tauri/gen/android/app/build/outputs/apk -type f -name "*universal*.apk" | head -n 1 || true)
+          if [ -z "$UNSIGNED_APK" ]; then
+            UNSIGNED_APK=$(find src-tauri/gen/android/app/build/outputs/apk -type f -name "*.apk" | head -n 1 || true)
+          fi
+          if [ -n "$UNSIGNED_APK" ]; then
+            if [[ "$UNSIGNED_APK" == *unsigned* ]]; then
+              "$ZIPALIGN" -f -p 4 "$UNSIGNED_APK" /tmp/aligned.apk
+              "$APKSIGNER" sign --ks "$KEYSTORE_FILE" --ks-key-alias "$ALIAS" \
+                --ks-pass "pass:$PASS" --key-pass "pass:$KPASS" \
+                --out "android-dist/ravansanj-sanati-${VER}-android.apk" /tmp/aligned.apk
+            else
+              cp "$UNSIGNED_APK" "android-dist/ravansanj-sanati-${VER}-android.apk"
+            fi
+          fi
+
+          BUILT_AAB=$(find src-tauri/gen/android/app/build/outputs/bundle -type f -name "*.aab" | head -n 1 || true)
+          if [ -n "$BUILT_AAB" ]; then
+            cp "$BUILT_AAB" "android-dist/ravansanj-sanati-${VER}-android.aab"
+          fi
+          rm -f "$KEYSTORE_FILE" /tmp/aligned.apk
+          ls -lh android-dist
+
+      - name: Attach Android APK & AAB to GitHub Release
+        if: needs.version.outputs.pushed_tag == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          if ls android-dist/* >/dev/null 2>&1; then
+            gh release upload "${{ needs.version.outputs.tag }}" android-dist/* --clobber
+          fi
+
+      - name: Upload Android installer artifacts to workflow run
+        uses: actions/upload-artifact@v4
+        with:
+          name: ravansanj-sanati-android-${{ needs.version.outputs.tag }}
+          path: android-dist/*
           if-no-files-found: warn

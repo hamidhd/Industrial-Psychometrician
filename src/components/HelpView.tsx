@@ -1,6 +1,6 @@
 import React from 'react';
 import { ALL_TESTS, BATTERIES, faDigits, FINAL, testById } from '../data/tests';
-import { OCCUPATIONAL_CATEGORIES, PDF_WORK_UNITS } from '../data/workUnits';
+import { getAllWorkUnits, OCCUPATIONAL_CATEGORIES } from '../data/workUnits';
 import type { AnyTestDef } from '../types/psychometrics';
 import { ToneTag } from './DimensionDisplay';
 
@@ -102,7 +102,7 @@ function BandsTable({ test }: { test: AnyTestDef }) {
         </table>
       </div>
       <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8] mt-2">
-        مرزها تقریبی و بر پایه‌ی یافته‌های رایج است و برای نمونه‌ی ایرانی/کارخانه‌ی شما هنجاریابی
+        مرزها تقریبی و بر پایه‌ی یافته‌های رایج است و برای نمونه‌ی ایرانی/سازمان شما هنجاریابی
         نشده است. پس از ثبت نتایج چند ده نفر از کارکنان خودتان، میانگین واحد را مبنای مقایسه قرار
         دهید.
       </p>
@@ -111,6 +111,7 @@ function BandsTable({ test }: { test: AnyTestDef }) {
 }
 
 export const HelpView: React.FC = () => {
+  const allWorkUnits = getAllWorkUnits();
   return (
     <div>
       <h1 className="text-2xl font-extrabold mb-1">راهنما و تفسیر</h1>
@@ -295,16 +296,16 @@ export const HelpView: React.FC = () => {
 
         <details className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c]">
           <summary className="cursor-pointer px-4 py-3 font-bold">
-            ۵) نقشه ۳۵ واحد کاری کارخانه و تعیین شغل پشت‌میزی در برابر میدانی (مدل هالند)
+            ۵) نقشه {faDigits(allWorkUnits.length)} واحد کاری سازمان و تعیین شغل پشت‌میزی در برابر میدانی (مدل هالند)
           </summary>
           <div className="px-4 pb-4 text-sm space-y-3">
             <p className="leading-7">
               سامانه با اجرای آزمون استاندارد <b>O*NET Mini-IP (مدل RIASEC جان هالند)</b> به همراه{' '}
               <b>Mini-IPIP (پنج عامل بزرگ شخصیت)</b>، به‌صورت مستقیم درصد تناسب فرد را با ۵ نوع
-              محیط کار محاسبه می‌کند: <b>کار پشت‌میزی و اداری (C+I)</b>، <b>کار میدانی و خط تولید (R)</b>،{' '}
+              محیط کار محاسبه می‌کند: <b>کار پشت‌میزی و اداری (C+I)</b>، <b>کار میدانی و عملیاتی (R)</b>،{' '}
               <b>کار فنی و تعمیرات (R+I)</b>، <b>کار آزمایشگاهی و کیفیت (I+C)</b> و{' '}
-              <b>کار مدیریتی و بازرگانی (E+S)</b>. سپس تمام ۳۵ واحد کاری شرکت به ترتیب درصد تناسب
-              رتبه‌بندی می‌شوند.
+              <b>کار مدیریتی و بازرگانی (E+S)</b>. سپس تمام واحدهای کاری استاندارد و سفارشی سازمان به
+              ترتیب درصد تناسب رتبه‌بندی می‌شوند.
             </p>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-xs min-w-[540px]">
@@ -312,12 +313,12 @@ export const HelpView: React.FC = () => {
                   <tr className="bg-[#f4f6f7] dark:bg-[#222d36] text-[#5a6a78] dark:text-[#9aabb8]">
                     <th className="text-right p-2.5 font-medium">گروه شغلی</th>
                     <th className="text-right p-2.5 font-medium">ماهیت محیط کار</th>
-                    <th className="text-right p-2.5 font-medium">واحدهای کاری کارخانه</th>
+                    <th className="text-right p-2.5 font-medium">واحدهای کاری</th>
                   </tr>
                 </thead>
                 <tbody>
                   {OCCUPATIONAL_CATEGORIES.map((cat) => {
-                    const units = PDF_WORK_UNITS.filter((u) => u.categoryId === cat.id);
+                    const units = allWorkUnits.filter((u) => u.categoryId === cat.id);
                     return (
                       <tr key={cat.id} className="border-b border-[#d5dce1] dark:border-[#33414d] align-top">
                         <td className="p-2.5 font-bold whitespace-nowrap">{cat.shortTitle}</td>

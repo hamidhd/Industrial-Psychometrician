@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { ALL_TESTS, faDigits, jdate, jdt, testById } from '../data/tests';
-import { getCategoryForDept, OCCUPATIONAL_CATEGORIES, PDF_WORK_UNITS } from '../data/workUnits';
+import { getAllWorkUnits, getCategoryForDept, OCCUPATIONAL_CATEGORIES } from '../data/workUnits';
 import type { OccupationalCategoryId, Person, TestResult, ViewName } from '../types/psychometrics';
 
 interface Props {
@@ -22,6 +22,7 @@ export const DashboardView: React.FC<Props> = ({
   onOpenCategory,
   onOpenPersonResults,
 }) => {
+  const allWorkUnits = useMemo(() => getAllWorkUnits(), []);
   const personMap = new Map(people.map((p) => [p.id, p]));
 
   const alerts = results
@@ -53,7 +54,7 @@ export const DashboardView: React.FC<Props> = ({
       <div>
         <h1 className="text-2xl font-extrabold mb-1">داشبورد</h1>
         <p className="text-sm text-[#5a6a78] dark:text-[#9aabb8]">
-          سامانه روان‌سنجی استاندارد و جایابی شغلی بر اساس واحدهای کاری کارخانه ·{' '}
+          سامانه روان‌سنجی استاندارد و جایابی شغلی بر اساس واحدهای کاری سازمان ·{' '}
           {useCloud ? 'متصل به پایگاه داده ابری' : 'حالت محلی / آفلاین'} ({computerLabel})
         </p>
       </div>
@@ -89,16 +90,18 @@ export const DashboardView: React.FC<Props> = ({
         <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-4">
           <div className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">ابزارهای علمی / واحدها</div>
           <div className="text-3xl font-extrabold mt-1 tabular-nums">
-            {faDigits(ALL_TESTS.length)} / {faDigits(PDF_WORK_UNITS.length)}
+            {faDigits(ALL_TESTS.length)} / {faDigits(allWorkUnits.length)}
           </div>
         </div>
       </div>
 
-      {/* Occupational Categories & Work Units (from PDF) */}
+      {/* Occupational Categories & Work Units */}
       <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5 space-y-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <div>
-            <h2 className="text-lg font-bold">دسته‌بندی بر اساس واحدهای کاری (۳۵ واحد کارخانه)</h2>
+            <h2 className="text-lg font-bold">
+              دسته‌بندی بر اساس واحدهای کاری ({faDigits(allWorkUnits.length)} واحد)
+            </h2>
             <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
               برای مشاهده پرسنل هر رده‌ی شغلی (پشت‌میزی، میدانی، فنی، آزمایشگاهی) روی آن کلیک کنید.
             </p>
@@ -114,7 +117,7 @@ export const DashboardView: React.FC<Props> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {OCCUPATIONAL_CATEGORIES.map((cat) => {
-            const unitsInCat = PDF_WORK_UNITS.filter((u) => u.categoryId === cat.id);
+            const unitsInCat = allWorkUnits.filter((u) => u.categoryId === cat.id);
             const count = categoryStats.peopleCount[cat.id] || 0;
             const placed = categoryStats.riasecCount[cat.id] || 0;
             return (

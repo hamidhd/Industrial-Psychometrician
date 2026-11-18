@@ -324,7 +324,7 @@ export const SettingsView: React.FC<Props> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label htmlFor="so" className="block text-xs font-medium mb-1">
-              نام سازمان / کارخانه
+              نام سازمان / شرکت / مجموعه
             </label>
             <input
               id="so"
@@ -466,7 +466,7 @@ export const SettingsView: React.FC<Props> = ({
           <input
             value={newWsOrg}
             maxLength={120}
-            placeholder="نام سازمان برای پایگاه داده جدید (مثلاً کارخانه‌ی دوم)"
+            placeholder="نام سازمان برای پایگاه داده جدید (مثلاً شعبه‌ی دوم)"
             onChange={(e) => setNewWsOrg(e.target.value)}
             className="flex-1 min-w-[240px] px-3 py-2 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm"
           />

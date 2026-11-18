@@ -155,7 +155,7 @@ function main() {
 
   // 4. Write release notes markdown
   const releaseNotes = [
-    `نسخه‌ی دسکتاپ **روان‌سنج صنعتی** (${tagStr})`,
+    `نسخه‌ی دسکتاپ ویندوز و اندروید **روان‌سنج صنعتی** (${tagStr})`,
     '',
     `- **نوع ارتقای خودکار نسخه:** \`${bumpType}\``,
     `- **علت انتخاب نسخه:** ${reason}`,
@@ -164,7 +164,7 @@ function main() {
     ...(commitLines.length > 0
       ? ['### فهرست تغییرات', ...commitLines.slice(0, 25), '']
       : []),
-    'فایل‌های نصاب ویندوز (`.exe` / `.msi`)، لینوکس (`.deb` / `.AppImage`) و مک (`.dmg`) در بخش **Assets** زیر قابل دریافت هستند.',
+    'فایل‌های نصاب ویندوز (`.exe` / `.msi`) و بسته‌ی نصب اندروید (`.apk` / `.aab`) در بخش **Assets** زیر قابل دریافت هستند.',
   ].join('\n');
   fs.writeFileSync(path.resolve('release-notes.md'), releaseNotes, 'utf8');
 

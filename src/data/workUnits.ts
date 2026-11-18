@@ -60,7 +60,10 @@ export interface WorkUnitDef {
   workSettingLabel: string;
   description: string;
   riasecIdeal: RiasecProfile;
+  isCustom?: boolean;
 }
+
+const CUSTOM_UNITS_STORAGE_KEY = 'rsi_custom_work_units_v1';
 
 export const OCCUPATIONAL_CATEGORIES: OccupationalCategoryDef[] = [
   {
@@ -149,8 +152,8 @@ export const OCCUPATIONAL_CATEGORIES: OccupationalCategoryDef[] = [
   },
 ];
 
-// All 35 exact PDF work units extracted from 1لیست پرسنل.pdf
-export const PDF_WORK_UNITS: WorkUnitDef[] = [
+// Standard organizational & industrial work units (customizable per organization)
+export const DEFAULT_WORK_UNITS: WorkUnitDef[] = [
   // Production & Operations
   {
     name: 'تولید گالوانیزه',
@@ -246,8 +249,8 @@ export const PDF_WORK_UNITS: WorkUnitDef[] = [
     name: 'تاسیسات',
     categoryId: 'technical',
     workSetting: 'technical',
-    workSettingLabel: 'فنی-میدانی / تاسیسات کارخانه',
-    description: 'نگهداری سیستم‌های آب، بخار، کمپرسور، تهویه و خطوط لوله صنعتی',
+    workSettingLabel: 'فنی-میدانی / تاسیسات سازمان',
+    description: 'نگهداری سیستم‌های آب، بخار، کمپرسور، تهویه و تاسیسات ساختمانی و صنعتی',
     riasecIdeal: { R: 94, I: 65, A: 20, S: 35, E: 32, C: 54 },
   },
   {
@@ -441,13 +444,38 @@ export const PDF_WORK_UNITS: WorkUnitDef[] = [
     riasecIdeal: { R: 22, I: 66, A: 54, S: 94, E: 62, C: 72 },
   },
 
+  {
+    name: 'منابع انسانی',
+    categoryId: 'office',
+    workSetting: 'desk',
+    workSettingLabel: 'پشت‌میزی-ارتباطی / جذب، ارزیابی و امور کارکنان',
+    description: 'استخدام، نگهداشت سرمایه انسانی، ارزشیابی عملکرد و امور رفاهی کارکنان',
+    riasecIdeal: { R: 20, I: 54, A: 30, S: 88, E: 58, C: 86 },
+  },
+  {
+    name: 'فناوری اطلاعات و نرم‌افزار',
+    categoryId: 'office',
+    workSetting: 'desk',
+    workSettingLabel: 'پشت‌میزی-تحلیلی / IT، سیستم‌ها و توسعه نرم‌افزار',
+    description: 'توسعه و پشتیبانی سامانه‌ها، پایگاه داده، زیرساخت شبکه و امنیت اطلاعات',
+    riasecIdeal: { R: 45, I: 94, A: 42, S: 40, E: 42, C: 84 },
+  },
+  {
+    name: 'مدیریت پروژه و برنامه‌ریزی',
+    categoryId: 'office',
+    workSetting: 'desk',
+    workSettingLabel: 'پشت‌میزی تحلیلی / PMO و کنترل پروژه',
+    description: 'زمان‌بندی، بودجه‌بندی، هماهنگی تیم‌های اجرایی و پایش شاخص‌های پیشرفت',
+    riasecIdeal: { R: 28, I: 76, A: 28, S: 58, E: 74, C: 90 },
+  },
+
   // Management, Sales & Commercial
   {
-    name: 'مدیریت کارخانه',
+    name: 'مدیریت عملیات / کارخانه',
     categoryId: 'commercial',
     workSetting: 'leadership',
-    workSettingLabel: 'مدیریتی (دفتر + بازدید میدانی خطوط)',
-    description: 'رهبری عملیات تولید و پشتیبانی، تصمیم‌گیری کلان و هماهنگی واحدها',
+    workSettingLabel: 'مدیریتی (دفتر + بازدید میدانی واحدها)',
+    description: 'رهبری عملیات سازمان و پشتیبانی، تصمیم‌گیری کلان و هماهنگی واحدها',
     riasecIdeal: { R: 52, I: 62, A: 28, S: 68, E: 95, C: 72 },
   },
   {
@@ -455,7 +483,7 @@ export const PDF_WORK_UNITS: WorkUnitDef[] = [
     categoryId: 'commercial',
     workSetting: 'leadership',
     workSettingLabel: 'مدیریتی-فنی (پشت‌میزی + میدانی)',
-    description: 'راهبری کلان مهندسی، نت و پروژه‌های تجهیزاتی کارخانه',
+    description: 'راهبری کلان مهندسی، نت و پروژه‌های تجهیزاتی سازمان',
     riasecIdeal: { R: 68, I: 84, A: 30, S: 58, E: 88, C: 68 },
   },
   {
@@ -467,11 +495,11 @@ export const PDF_WORK_UNITS: WorkUnitDef[] = [
     riasecIdeal: { R: 28, I: 70, A: 36, S: 72, E: 95, C: 76 },
   },
   {
-    name: 'مدیرعامل شرکت دانیال استیل',
+    name: 'مدیرعامل و هیئت‌مدیره',
     categoryId: 'commercial',
     workSetting: 'leadership',
     workSettingLabel: 'مدیریت عالی / رهبری راهبردی',
-    description: 'هدایت راهبردی شرکت، مذاکرات کلان و تصمیم‌گیری سطح بالا',
+    description: 'هدایت راهبردی سازمان، مذاکرات کلان و تصمیم‌گیری سطح بالا',
     riasecIdeal: { R: 25, I: 65, A: 35, S: 70, E: 98, C: 72 },
   },
   {
@@ -513,8 +541,16 @@ export const PDF_WORK_UNITS: WorkUnitDef[] = [
     categoryId: 'safety_support',
     workSetting: 'support',
     workSettingLabel: 'میدانی / پشتیبانی و خدمات عمومی',
-    description: 'نظافت صنعتی، پشتیبانی محیطی و خدمات عمومی کارخانه',
+    description: 'پشتیبانی محیطی، نظافت و خدمات عمومی سازمان',
     riasecIdeal: { R: 74, I: 20, A: 18, S: 72, E: 25, C: 58 },
+  },
+  {
+    name: 'پشتیبانی و خدمات مشتریان',
+    categoryId: 'safety_support',
+    workSetting: 'support',
+    workSettingLabel: 'ارتباطی-پشتیبانی / پاسخگویی و امور مراجعین',
+    description: 'پاسخگویی به مشتریان و مراجعین، پیگیری درخواست‌ها و رفع مشکلات',
+    riasecIdeal: { R: 25, I: 45, A: 26, S: 92, E: 64, C: 74 },
   },
   {
     name: 'آشپزخانه',
@@ -526,12 +562,77 @@ export const PDF_WORK_UNITS: WorkUnitDef[] = [
   },
 ];
 
+const SETTING_RIASEC_DEFAULTS: Record<WorkSettingType, RiasecProfile> = {
+  field: { R: 90, I: 36, A: 20, S: 40, E: 34, C: 60 },
+  technical: { R: 88, I: 80, A: 28, S: 34, E: 36, C: 58 },
+  desk: { R: 22, I: 66, A: 28, S: 52, E: 50, C: 94 },
+  lab: { R: 54, I: 92, A: 30, S: 34, E: 30, C: 84 },
+  leadership: { R: 28, I: 58, A: 34, S: 74, E: 95, C: 70 },
+  support: { R: 56, I: 40, A: 24, S: 86, E: 48, C: 68 },
+};
+
+export function getCustomWorkUnits(): WorkUnitDef[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(CUSTOM_UNITS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((u) => u && typeof u.name === 'string' && u.name.trim());
+  } catch {
+    return [];
+  }
+}
+
+export function addCustomWorkUnit(input: {
+  name: string;
+  categoryId: OccupationalCategoryId;
+  workSetting: WorkSettingType;
+  description?: string;
+}): WorkUnitDef[] {
+  const cleanName = input.name.trim();
+  const current = getCustomWorkUnits().filter(
+    (u) => normalizeFa(u.name) !== normalizeFa(cleanName)
+  );
+  const newUnit: WorkUnitDef = {
+    name: cleanName,
+    categoryId: input.categoryId,
+    workSetting: input.workSetting,
+    workSettingLabel: WORK_SETTING_LABEL[input.workSetting],
+    description: input.description?.trim() || `واحد کاری سفارشی (${WORK_SETTING_LABEL[input.workSetting]})`,
+    riasecIdeal: SETTING_RIASEC_DEFAULTS[input.workSetting],
+    isCustom: true,
+  };
+  const next = [...current, newUnit];
+  localStorage.setItem(CUSTOM_UNITS_STORAGE_KEY, JSON.stringify(next));
+  return next;
+}
+
+export function removeCustomWorkUnit(unitName: string): WorkUnitDef[] {
+  const next = getCustomWorkUnits().filter(
+    (u) => normalizeFa(u.name) !== normalizeFa(unitName)
+  );
+  localStorage.setItem(CUSTOM_UNITS_STORAGE_KEY, JSON.stringify(next));
+  return next;
+}
+
+export function getAllWorkUnits(): WorkUnitDef[] {
+  const custom = getCustomWorkUnits();
+  if (custom.length === 0) return DEFAULT_WORK_UNITS;
+  const existingNames = new Set(DEFAULT_WORK_UNITS.map((u) => normalizeFa(u.name)));
+  return [
+    ...DEFAULT_WORK_UNITS,
+    ...custom.filter((u) => !existingNames.has(normalizeFa(u.name))),
+  ];
+}
+
 export function findWorkUnit(deptName: string): WorkUnitDef | undefined {
   const norm = normalizeFa(deptName);
   if (!norm) return undefined;
+  const units = getAllWorkUnits();
   return (
-    PDF_WORK_UNITS.find((u) => normalizeFa(u.name) === norm) ||
-    PDF_WORK_UNITS.find((u) => norm.includes(normalizeFa(u.name)) || normalizeFa(u.name).includes(norm))
+    units.find((u) => normalizeFa(u.name) === norm) ||
+    units.find((u) => norm.includes(normalizeFa(u.name)) || normalizeFa(u.name).includes(norm))
   );
 }
 
@@ -715,9 +816,9 @@ export function computePlacementAnalysis(
 
   const primarySetting = settingsRanked[0];
 
-  // Rank all 35 PDF work units
+  // Rank all standard + custom organizational work units
   const userVec = [R, I, A, S, E, C];
-  const allUnitsRanked: UnitRecommendation[] = PDF_WORK_UNITS.map((unit) => {
+  const allUnitsRanked: UnitRecommendation[] = getAllWorkUnits().map((unit) => {
     const ideal = unit.riasecIdeal;
     const idealVec = [ideal.R, ideal.I, ideal.A, ideal.S, ideal.E, ideal.C];
     const cat = getCategoryById(unit.categoryId);
@@ -782,7 +883,7 @@ export function computePlacementAnalysis(
     deskFieldText = `تیپ متهور و ارتباطی فرد نشان‌دهنده‌ی تناسب بالا با «کار مدیریتی، سرپرستی، فروش و بازرگانی» است.`;
   }
 
-  const verdictSummary = `${deskFieldText} بر اساس کد هالند (${hollandCode})، بهترین واحدهای کاری پیشنهادی در شرکت عبارت‌اند از: ${topUnits
+  const verdictSummary = `${deskFieldText} بر اساس کد هالند (${hollandCode})، بهترین واحدهای کاری پیشنهادی در سازمان عبارت‌اند از: ${topUnits
     .slice(0, 3)
     .map((u) => `${u.unit.name} (${u.fitPct}٪)`)
     .join('، ')}.`;

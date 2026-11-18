@@ -28,7 +28,7 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPass, setChangingPass] = useState(false);
 
-  // Load stored users from localStorage and merge any newly added master personnel
+  // Load stored users cleanly (migrating only admin/evaluator credentials from v1 if present)
   const getUsers = (): AppUser[] => {
     const buildSeeded = (): AppUser[] =>
       INITIAL_MASTER_PERSONNEL.map((p, idx) => ({
@@ -46,10 +46,11 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
         hasResultAccess: p.hasResultAccess,
       }));
 
+    const STORAGE_V2 = 'rsi_app_users_v2';
     try {
-      const raw = localStorage.getItem('rsi_app_users');
-      if (raw) {
-        const parsed = JSON.parse(raw);
+      const rawV2 = localStorage.getItem(STORAGE_V2);
+      if (rawV2) {
+        const parsed = JSON.parse(rawV2);
         if (Array.isArray(parsed) && parsed.length > 0) {
           const existingPids = new Set(parsed.map((u: AppUser) => u.personnelId));
           const existingNids = new Set(parsed.map((u: AppUser) => u.nationalCode));
@@ -58,17 +59,35 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
           );
           if (additions.length > 0) {
             const merged = [...parsed, ...additions];
-            localStorage.setItem('rsi_app_users', JSON.stringify(merged));
+            localStorage.setItem(STORAGE_V2, JSON.stringify(merged));
             return merged;
           }
           return parsed;
+        }
+      }
+
+      // Migrate custom or password-updated admin/evaluator entries from legacy key if present
+      const seeded = buildSeeded();
+      const rawV1 = localStorage.getItem('rsi_app_users');
+      if (rawV1) {
+        const v1 = JSON.parse(rawV1);
+        if (Array.isArray(v1)) {
+          const v1Privileged = v1.filter((u: AppUser) => u && u.hasResultAccess);
+          const merged = seeded.map((s) => {
+            const match = v1Privileged.find(
+              (u: AppUser) => u.username && s.username && u.username === s.username
+            );
+            return match ? { ...s, passwordHash: match.passwordHash, mustChangePassword: match.mustChangePassword } : s;
+          });
+          localStorage.setItem(STORAGE_V2, JSON.stringify(merged));
+          return merged;
         }
       }
     } catch {
       // fallback
     }
     const seeded = buildSeeded();
-    localStorage.setItem('rsi_app_users', JSON.stringify(seeded));
+    localStorage.setItem(STORAGE_V2, JSON.stringify(seeded));
     return seeded;
   };
 
@@ -92,25 +111,48 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
           onLoginSuccess(found);
           onToast(`خوش آمدید، ${found.name}`);
         }
-      } else {
-        // If not found in seeded list, allow dynamic employee creation for filling tests!
-        const dynamicUser: AppUser = {
-          id: `u_dyn_${Date.now()}`,
-          personnelId: queryId.length <= 6 ? queryId : '99999',
-          name: 'پرسنل گرامی',
-          nationalCode: queryId.length === 10 ? queryId : '0000000000',
-          mobile: '',
-          dept: 'عمومی',
-          hireDate: '1405/01/01',
-          role: 'employee',
-          hasResultAccess: false,
-        };
-        const usersList = getUsers();
-        usersList.push(dynamicUser);
-        localStorage.setItem('rsi_app_users', JSON.stringify(usersList));
-        onLoginSuccess(dynamicUser);
-        onToast('خوش آمدید');
+        return;
       }
+
+      // Check local database people list (e.g., staff imported from Excel/CSV by the organization)
+      let matchedImported: { name: string; code: string; dept: string } | null = null;
+      try {
+        const rawDb = localStorage.getItem('rsi_local_db_v2');
+        if (rawDb) {
+          const parsedDb = JSON.parse(rawDb);
+          if (Array.isArray(parsedDb?.people)) {
+            const person = parsedDb.people.find(
+              (p: { code?: string; name?: string; dept?: string }) =>
+                p && p.code && p.code.trim() === queryId
+            );
+            if (person) {
+              matchedImported = {
+                name: person.name || 'پرسنل گرامی',
+                code: person.code,
+                dept: person.dept || 'عمومی',
+              };
+            }
+          }
+        }
+      } catch {
+        // ignore parse errors
+      }
+
+      const dynamicUser: AppUser = {
+        id: `u_dyn_${Date.now()}`,
+        personnelId: matchedImported ? matchedImported.code : queryId.length <= 6 ? queryId : '99999',
+        name: matchedImported ? matchedImported.name : 'پرسنل گرامی',
+        nationalCode: queryId.length === 10 ? queryId : '0000000000',
+        mobile: '',
+        dept: matchedImported ? matchedImported.dept : 'عمومی',
+        hireDate: '1405/01/01',
+        role: 'employee',
+        hasResultAccess: false,
+      };
+      users.push(dynamicUser);
+      localStorage.setItem('rsi_app_users_v2', JSON.stringify(users));
+      onLoginSuccess(dynamicUser);
+      onToast(matchedImported ? `خوش آمدید، ${matchedImported.name}` : 'خوش آمدید');
     } finally {
       setLoadingPersonnel(false);
     }
@@ -172,7 +214,7 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
         }
         return u;
       });
-      localStorage.setItem('rsi_app_users', JSON.stringify(updated));
+      localStorage.setItem('rsi_app_users_v2', JSON.stringify(updated));
       const finalUsr = updated.find((u) => u.id === pendingUser.id)!;
       setPendingUser(null);
       onLoginSuccess(finalUsr);
@@ -320,7 +362,7 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
                 type="text"
                 required
                 dir="ltr"
-                placeholder="مثلاً: 4568756561 یا 22005"
+                placeholder="مثلاً: 0000000001 یا 10001"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-lg border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] text-sm num-ltr font-semibold"
@@ -328,10 +370,10 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
             </div>
             <button
               type="button"
-              onClick={() => setIdentifier('22005')}
+              onClick={() => setIdentifier('10001')}
               className="text-xs text-[#0e6a88] dark:text-[#4fb4d4] hover:underline cursor-pointer block"
             >
-              نمونه تست پرسنلی (کد پرسنلی: 22005)
+              نمونه تست پرسنلی (کد پرسنلی: 10001)
             </button>
             <button
               type="submit"

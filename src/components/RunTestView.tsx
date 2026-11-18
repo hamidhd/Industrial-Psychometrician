@@ -57,7 +57,7 @@ export const RunTestView: React.FC<Props> = ({
         <div className="rounded-[10px] border border-[#d5dce1] dark:border-[#33414d] bg-white dark:bg-[#1b242c] p-5 space-y-3">
           <p className="text-sm">
             {canSelectAnyPerson
-              ? 'ابتدا باید فردی ثبت شود یا لیست پرسنل کارخانه را وارد کنید.'
+              ? 'ابتدا باید فردی ثبت شود یا لیست پرسنل سازمان را از اکسل/CSV وارد کنید.'
               : 'در حال آماده‌سازی پرونده کاربری شما…'}
           </p>
           {canSelectAnyPerson && (
@@ -262,8 +262,8 @@ export const RunTestView: React.FC<Props> = ({
         <div>
           <h2 className="text-lg font-bold">۲) بسته‌های شغلی و آزمون‌های علمی</h2>
           <p className="text-xs text-[#5a6a78] dark:text-[#9aabb8]">
-            برای تعیین مستقیم اینکه فرد مناسب کار پشت‌میزی، میدانی، فنی یا کدام یک از ۳۵ واحد کارخانه
-            است، بسته‌ی اول («تعیین واحد کاری») را انتخاب کنید.
+            برای تعیین مستقیم اینکه فرد مناسب کار پشت‌میزی، میدانی، فنی یا کدام یک از واحدهای
+            کاری سازمان است، بسته‌ی اول («تعیین واحد کاری») را انتخاب کنید.
           </p>
         </div>
 

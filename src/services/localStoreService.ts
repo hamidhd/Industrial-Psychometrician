@@ -55,8 +55,8 @@ function readDb(): LocalDbState {
   }
   const defaultWs: Workspace = {
     id: 'ws_local_default',
-    org: 'مجتمع صنعتی دانیال استیل — واحد ارزیابی',
-    examiner: 'واحد ایمنی و بهداشت (HSE) / طب کار',
+    org: 'سازمان من — واحد ارزیابی و منابع انسانی',
+    examiner: 'واحد ایمنی و بهداشت (HSE) / منابع انسانی',
     ownerId: 'local_admin',
     ownerEmail: 'admin@ravansanj.local',
     allowedEmails: ['admin@ravansanj.local', 'user@ravansanj.local'],

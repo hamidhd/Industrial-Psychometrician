@@ -28,7 +28,7 @@ export const PlacementPanel: React.FC<Props> = ({
           <h2 className="text-base font-bold">تعیین واحد کاری مناسب (پشت‌میزی / میدانی / فنی / آزمایشگاهی)</h2>
           <p className="text-xs text-[#1b2733] dark:text-[#e6ecf0] leading-6">
             برای دریافت تحلیل مستقیم تناسب شخصیت با محیط کار (پشت‌میزی در برابر میدانی) و رتبه‌بندی
-            ۳۵ واحد کاری کارخانه، لازم است <b>رغبت‌سنج شغلی هالند (O*NET RIASEC)</b> برای این فرد
+            واحدهای کاری سازمان، لازم است <b>رغبت‌سنج شغلی هالند (O*NET RIASEC)</b> برای این فرد
             اجرا شود (همراهی با آزمون شخصیت Mini-IPIP دقت پیش‌بینی را افزایش می‌دهد).
           </p>
         </div>
@@ -125,9 +125,9 @@ export const PlacementPanel: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Top 5 Matched PDF Work Units */}
+      {/* Top 5 Matched Work Units */}
       <div className="space-y-2">
-        <h3 className="text-sm font-bold">پیشنهاد مستقیم واحدهای کاری شرکت (بر اساس ۳۵ واحد فایل پرسنل)</h3>
+        <h3 className="text-sm font-bold">پیشنهاد مستقیم واحدهای کاری سازمان (استاندارد و سفارشی)</h3>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-xs min-w-[520px]">
             <thead>
