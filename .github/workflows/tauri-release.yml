@@ -175,7 +175,7 @@ jobs:
 
       - name: Build Tauri v2 Windows bundle (fallback without GitHub Release upload)
         if: needs.version.outputs.pushed_tag != 'true'
-        run: npx --yes @tauri-apps/cli@2 build
+        run: npm run tauri -- build
 
       - name: Upload Windows installer artifacts to workflow run
         uses: actions/upload-artifact@v4
@@ -263,13 +263,13 @@ jobs:
           CI: true
         run: |
           if [ ! -d "src-tauri/gen/android" ]; then
-            npx --yes @tauri-apps/cli@2 android init --ci
+            npm run tauri -- android init --ci --skip-targets-install
           fi
 
       - name: Build Tauri v2 Android APK & AAB
         env:
           CI: true
-        run: npx --yes @tauri-apps/cli@2 android build --apk --aab --ci
+        run: npm run tauri -- android build --apk --aab --ci
 
       - name: Sign & package installable Android APK
         id: sign
