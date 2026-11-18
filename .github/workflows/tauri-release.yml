@@ -218,13 +218,32 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK Platforms, Build-Tools & NDK
+      - name: Setup Android SDK, Build-Tools & NDK
         run: |
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018"
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          CMDLINE_BIN="$(find "$SDK_ROOT/cmdline-tools" -maxdepth 2 -type d -name bin 2>/dev/null | sort -V | tail -n 1 || true)"
+          if [ -z "$CMDLINE_BIN" ]; then
+            echo "Downloading Android cmdline-tools..."
+            mkdir -p "$SDK_ROOT/cmdline-tools"
+            curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/cmdline-tools.zip
+            unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-unpack
+            mv /tmp/cmdline-unpack/cmdline-tools "$SDK_ROOT/cmdline-tools/latest"
+            rm -rf /tmp/cmdline-tools.zip /tmp/cmdline-unpack
+            CMDLINE_BIN="$SDK_ROOT/cmdline-tools/latest/bin"
+          fi
+          export PATH="$CMDLINE_BIN:$SDK_ROOT/platform-tools:$PATH"
+          yes | "$CMDLINE_BIN/sdkmanager" --sdk_root="$SDK_ROOT" --licenses >/dev/null 2>&1 || true
+          "$CMDLINE_BIN/sdkmanager" --sdk_root="$SDK_ROOT" \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "ndk;27.2.12479018"
+          NDK_DIR="$(ls -d "$SDK_ROOT/ndk/"* 2>/dev/null | sort -V | tail -n 1 || true)"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "NDK_HOME=$NDK_DIR" >> "$GITHUB_ENV"
+          echo "$CMDLINE_BIN" >> "$GITHUB_PATH"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
 
       - name: Setup Rust stable toolchain with Android targets
         uses: dtolnay/rust-toolchain@stable
@@ -241,8 +260,6 @@ jobs:
 
       - name: Initialize Tauri v2 Android project (if missing)
         env:
-          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
-          NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/27.2.12479018
           CI: true
         run: |
           if [ ! -d "src-tauri/gen/android" ]; then
@@ -251,8 +268,6 @@ jobs:
 
       - name: Build Tauri v2 Android APK & AAB
         env:
-          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
-          NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/27.2.12479018
           CI: true
         run: npx --yes @tauri-apps/cli@2 android build --apk --aab --ci
 
