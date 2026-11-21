@@ -1,7 +1,29 @@
-import React, { useState } from 'react';
-import { KeyRound, ShieldCheck, UserCheck, Users } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  CheckCircle2,
+  KeyRound,
+  Loader2,
+  Server,
+  ShieldAlert,
+  Users,
+  XCircle,
+} from 'lucide-react';
 import { INITIAL_MASTER_PERSONNEL } from '../data/initialPersonnel';
-import { signInWithGoogle } from '../firebase';
+import {
+  formatFirebaseAuthError,
+  signInWithGoogle,
+  signInWithGoogleCredentialTokens,
+} from '../firebase';
+import {
+  checkBackendHealth,
+  getConfiguredBackendUrl,
+  isAndroidRuntime,
+  isDesktopTauriRuntime,
+  isTauriRuntime,
+  setConfiguredBackendUrl,
+  signInGoogleViaBackendBridge,
+  signInGoogleViaWindowsLoopback,
+} from '../utils/tauriBridge';
 import type { AppUser } from '../types/psychometrics';
 
 interface Props {
@@ -11,6 +33,9 @@ interface Props {
 
 export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
   const [tab, setTab] = useState<'personnel' | 'admin' | 'google'>('personnel');
+  const inTauri = isTauriRuntime();
+  const inAndroid = isAndroidRuntime();
+  const inWindowsDesktop = isDesktopTauriRuntime();
 
   // Personnel login state (National Code or Personnel ID)
   const [identifier, setIdentifier] = useState('');
@@ -27,6 +52,30 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPass, setChangingPass] = useState(false);
+
+  // Google / Backend Bridge state
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [googleStatus, setGoogleStatus] = useState<string | null>(null);
+  const [googleErr, setGoogleErr] = useState<string | null>(null);
+  const [backendUrlInput, setBackendUrlInput] = useState<string>(() =>
+    getConfiguredBackendUrl()
+  );
+  const [showBackendConfig, setShowBackendConfig] = useState<boolean>(
+    () => inTauri && !getConfiguredBackendUrl()
+  );
+  const [backendStatus, setBackendStatus] = useState<{
+    checked: boolean;
+    ok: boolean;
+    message: string;
+  }>({ checked: false, ok: false, message: '' });
+  const [checkingBackend, setCheckingBackend] = useState(false);
+  const googleAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      googleAbortRef.current?.abort();
+    };
+  }, []);
 
   // Load stored users cleanly (migrating only admin/evaluator credentials from v1 if present)
   const getUsers = (): AppUser[] => {
@@ -224,10 +273,122 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
     }
   };
 
-  const handleGoogle = async () => {
+  const handleTestBackend = async (rawUrl?: string) => {
+    const saved = setConfiguredBackendUrl(rawUrl ?? backendUrlInput);
+    setBackendUrlInput(saved);
+    if (!saved) {
+      setBackendStatus({
+        checked: true,
+        ok: false,
+        message: 'آدرس سرور بک‌اند وارد نشده است.',
+      });
+      return false;
+    }
+    setCheckingBackend(true);
     try {
-      const cred = await signInWithGoogle();
-      const fbUser = cred.user;
+      const res = await checkBackendHealth(saved);
+      if (res.ok) {
+        setBackendStatus({
+          checked: true,
+          ok: true,
+          message: `اتصال برقرار است (نسخه ${res.version || 'بک‌اند'})`,
+        });
+        return true;
+      }
+      setBackendStatus({
+        checked: true,
+        ok: false,
+        message: res.error || 'سرور بک‌اند پاسخ نداد.',
+      });
+      return false;
+    } finally {
+      setCheckingBackend(false);
+    }
+  };
+
+  const handleCancelGoogle = () => {
+    googleAbortRef.current?.abort();
+    googleAbortRef.current = null;
+    setLoadingGoogle(false);
+    setGoogleStatus(null);
+  };
+
+  const handleGoogle = async () => {
+    if (loadingGoogle) return;
+    setLoadingGoogle(true);
+    setGoogleErr(null);
+    setGoogleStatus('در حال بررسی روش اتصال به گوگل...');
+
+    const controller = new AbortController();
+    googleAbortRef.current = controller;
+
+    try {
+      let fbUser;
+
+      if (!inTauri) {
+        setGoogleStatus('در حال باز کردن پنجره ورود گوگل...');
+        const cred = await signInWithGoogle();
+        fbUser = cred.user;
+      } else {
+        const savedUrl = setConfiguredBackendUrl(backendUrlInput);
+        setBackendUrlInput(savedUrl);
+
+        let useBackendBridge = false;
+        if (savedUrl) {
+          setGoogleStatus('در حال بررسی دسترسی به سرور بک‌اند...');
+          const health = await checkBackendHealth(savedUrl);
+          if (health.ok && health.authBridge) {
+            useBackendBridge = true;
+            setBackendStatus({
+              checked: true,
+              ok: true,
+              message: `اتصال برقرار است (نسخه ${health.version || 'بک‌اند'})`,
+            });
+          } else {
+            setBackendStatus({
+              checked: true,
+              ok: false,
+              message: health.error || 'سرور بک‌اند در دسترس نیست.',
+            });
+          }
+        }
+
+        if (useBackendBridge) {
+          const tokens = await signInGoogleViaBackendBridge(
+            savedUrl,
+            (msg) => setGoogleStatus(msg),
+            controller.signal
+          );
+          setGoogleStatus('در حال همگام‌سازی نشست Firebase...');
+          const cred = await signInWithGoogleCredentialTokens(
+            tokens.googleIdToken,
+            tokens.googleAccessToken
+          );
+          fbUser = cred.user;
+        } else if (inWindowsDesktop) {
+          const tokens = await signInGoogleViaWindowsLoopback(
+            (msg) => setGoogleStatus(msg),
+            controller.signal
+          );
+          setGoogleStatus('در حال فعال‌سازی نشست ابری ویندوز...');
+          const cred = await signInWithGoogleCredentialTokens(
+            tokens.googleIdToken,
+            tokens.googleAccessToken
+          );
+          fbUser = cred.user;
+        } else if (inAndroid) {
+          setShowBackendConfig(true);
+          throw new Error(
+            savedUrl
+              ? 'سرور بک‌اند در دسترس نیست. اندروید برای ورود گوگل (به‌دلیل مسدودیت WebView توسط گوگل) نیاز به اتصال به سرور بک‌اند HTTPS دارد.'
+              : 'برای ورود با حساب گوگل در اپلیکیشن اندروید، ابتدا آدرس سرور بک‌اند (https://...) را در بخش زیر وارد و ذخیره کنید.'
+          );
+        } else {
+          const cred = await signInWithGoogle();
+          fbUser = cred.user;
+        }
+      }
+
       const adminUsr: AppUser = {
         id: fbUser.uid,
         personnelId: '1000',
@@ -241,8 +402,14 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
       };
       onLoginSuccess(adminUsr);
       onToast('با موفقیت به پایگاه داده ابری متصل شدید');
-    } catch {
-      onToast('امکان اتصال به حساب گوگل وجود ندارد؛ از ورود پرسنل یا مدیران استفاده کنید');
+    } catch (err) {
+      const readable = formatFirebaseAuthError(err);
+      setGoogleErr(readable);
+      onToast(readable);
+    } finally {
+      googleAbortRef.current = null;
+      setLoadingGoogle(false);
+      setGoogleStatus(null);
     }
   };
 
@@ -432,17 +599,116 @@ export const AuthGate: React.FC<Props> = ({ onLoginSuccess, onToast }) => {
 
         {tab === 'google' && (
           <div className="space-y-4">
-            <p className="text-sm leading-7 text-[var(--ink-muted)]">
-              اگر به اینترنت و حساب گوگل دسترسی دارید، می‌توانید از طریق دکمه‌ی زیر به پایگاه داده ابری
-              مشترک متصل شوید.
+            <p className="text-xs sm:text-sm leading-7 text-[var(--ink-muted)]">
+              {inTauri
+                ? 'در نسخه نصبی ویندوز و اندروید، احراز هویت گوگل از طریق مرورگر اصلی دستگاه و درگاه امن بک‌اند انجام می‌شود تا بدون محدودیت WebView به پایگاه داده ابری متصل شوید.'
+                : 'اگر به اینترنت و حساب گوگل دسترسی دارید، می‌توانید از طریق دکمه‌ی زیر به پایگاه داده ابری مشترک متصل شوید.'}
             </p>
+
+            {googleErr && (
+              <div className="rounded-xl p-3 bg-[#fef2f2] dark:bg-[#450a0a]/60 border border-[#dc2626]/40 dark:border-[#f87171]/40 text-xs font-medium leading-6 flex items-start gap-2">
+                <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <span>{googleErr}</span>
+              </div>
+            )}
+
+            {loadingGoogle && googleStatus && (
+              <div className="rounded-xl p-3 bg-[var(--accent-soft)] border border-[var(--accent)]/40 text-xs leading-6 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 text-[var(--accent)] animate-spin shrink-0" />
+                  <span>{googleStatus}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCancelGoogle}
+                  className="text-rose-400 hover:underline font-bold shrink-0 cursor-pointer flex items-center gap-1"
+                >
+                  <XCircle className="w-3.5 h-3.5" />
+                  <span>لغو</span>
+                </button>
+              </div>
+            )}
+
+            {inTauri && (
+              <div className="rounded-xl border border-[var(--ink-faint)] bg-[var(--bg)]/60 p-3 space-y-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowBackendConfig((v) => !v)}
+                  className="w-full flex items-center justify-between text-xs font-bold text-[var(--ink)] cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <Server className="w-3.5 h-3.5 text-[var(--accent)]" />
+                    <span>تنظیمات سرور بک‌اند (اختیاری در ویندوز / ضروری در اندروید)</span>
+                  </span>
+                  <span className="text-[11px] text-[var(--accent)]">
+                    {showBackendConfig ? 'بستن' : backendUrlInput ? 'تغییر آدرس' : 'تنظیم آدرس'}
+                  </span>
+                </button>
+
+                {showBackendConfig && (
+                  <div className="space-y-2 pt-1">
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        dir="ltr"
+                        placeholder="https://your-server.example.com"
+                        value={backendUrlInput}
+                        onChange={(e) => {
+                          setBackendUrlInput(e.target.value);
+                          setBackendStatus({ checked: false, ok: false, message: '' });
+                        }}
+                        className="flex-1 px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--surface)] text-xs num-ltr"
+                      />
+                      <button
+                        type="button"
+                        disabled={checkingBackend}
+                        onClick={() => void handleTestBackend()}
+                        className="px-3 py-2 rounded-lg bg-[var(--ink-faint)] hover:border-[var(--accent)]/50 border border-[var(--ink-faint)] text-xs font-bold cursor-pointer shrink-0 disabled:opacity-50"
+                      >
+                        {checkingBackend ? 'بررسی…' : 'بررسی اتصال'}
+                      </button>
+                    </div>
+                    {backendStatus.checked && (
+                      <p
+                        className={`text-[11px] flex items-center gap-1.5 ${
+                          backendStatus.ok ? 'text-emerald-400' : 'text-amber-400'
+                        }`}
+                      >
+                        {backendStatus.ok ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        ) : (
+                          <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+                        )}
+                        <span>{backendStatus.message}</span>
+                      </p>
+                    )}
+                    <p className="text-[11px] text-[var(--ink-muted)] leading-5">
+                      {inWindowsDesktop
+                        ? 'در ویندوز اگر آدرس سرور بک‌اند تنظیم نشده باشد، برنامه به‌صورت خودکار از درگاه محلی مرورگر ویندوز استفاده می‌کند.'
+                        : 'در اندروید آدرس HTTPS سروری که بک‌اند برنامه (node server.ts) روی آن فعال است را وارد کنید.'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             <button
               type="button"
+              disabled={loadingGoogle}
               onClick={handleGoogle}
-              className="w-full py-3 px-4 rounded-lg font-bold bg-[var(--ink-faint)] border border-[var(--ink-faint)] hover:border-[var(--accent)]/50 cursor-pointer text-sm flex items-center justify-center gap-2 transition-colors"
+              className="w-full py-3 px-4 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] shadow-[0_4px_12px_var(--accent-soft)] hover:opacity-95 disabled:opacity-60 cursor-pointer text-sm flex items-center justify-center gap-2 transition-colors"
             >
-              <Users className="w-4 h-4 text-[var(--accent)]" />
-              <span>ورود با حساب گوگل</span>
+              {loadingGoogle ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>در حال اتصال به حساب گوگل…</span>
+                </>
+              ) : (
+                <>
+                  <Users className="w-4 h-4" />
+                  <span>ورود با حساب گوگل</span>
+                </>
+              )}
             </button>
           </div>
         )}

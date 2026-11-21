@@ -15,6 +15,11 @@ import {
   localUpdateWorkspaceMeta,
   localWipeWorkspace,
 } from '../services/localStoreService';
+import {
+  checkBackendHealth,
+  getConfiguredBackendUrl,
+  setConfiguredBackendUrl,
+} from '../utils/tauriBridge';
 import type { Person, TestResult, Workspace } from '../types/psychometrics';
 
 interface Props {
@@ -73,6 +78,9 @@ export const SettingsView: React.FC<Props> = ({
   } | null>(null);
   const [wipeConfirm, setWipeConfirm] = useState(false);
   const [busyAction, setBusyAction] = useState(false);
+  const [backendUrl, setBackendUrl] = useState(() => getConfiguredBackendUrl());
+  const [testingBackend, setTestingBackend] = useState(false);
+  const [backendCheckMsg, setBackendCheckMsg] = useState<string | null>(null);
 
   const isOwner = Boolean(useCloud && firebaseUser && activeWorkspace.ownerId === firebaseUser.uid);
 
@@ -582,6 +590,62 @@ export const SettingsView: React.FC<Props> = ({
           </div>
         </div>
       )}
+
+      {/* تنظیم سرور بک‌اند برای ویندوز و اندروید */}
+      <div className="bg-[var(--surface)] border border-[var(--ink-faint)] rounded-2xl p-6 space-y-3">
+        <h2 className="text-base font-extrabold">سرور بک‌اند احراز هویت گوگل (ویندوز و اندروید)</h2>
+        <p className="text-xs leading-6 text-[var(--ink-muted)]">
+          در نسخه‌های نصبی ویندوز و اندروید، ارتباط امن مرورگر سیستم با حساب گوگل از طریق این سرور
+          بک‌اند انجام می‌شود. در ویندوز بدون وارد کردن سرور نیز ورود از طریق مرورگر محلی فعال است،
+          اما در اندروید وارد کردن آدرس HTTPS بک‌اند ضروری است.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <input
+            type="url"
+            dir="ltr"
+            placeholder="https://your-backend.example.com"
+            value={backendUrl}
+            onChange={(e) => {
+              setBackendUrl(e.target.value);
+              setBackendCheckMsg(null);
+            }}
+            className="flex-1 min-w-[220px] px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-xs num-ltr"
+          />
+          <button
+            type="button"
+            disabled={testingBackend}
+            onClick={async () => {
+              const saved = setConfiguredBackendUrl(backendUrl);
+              setBackendUrl(saved);
+              if (!saved) {
+                setBackendCheckMsg('آدرس سرور پاک شد.');
+                onToast('آدرس سرور بک‌اند پاک شد');
+                return;
+              }
+              setTestingBackend(true);
+              try {
+                const res = await checkBackendHealth(saved);
+                if (res.ok) {
+                  const msg = `اتصال موفق (نسخه ${res.version || 'بک‌اند'})`;
+                  setBackendCheckMsg(msg);
+                  onToast('آدرس بک‌اند ذخیره و ارتباط تایید شد');
+                } else {
+                  setBackendCheckMsg(res.error || 'خطا در اتصال به سرور');
+                  onToast('آدرس ذخیره شد اما سرور پاسخ نداد');
+                }
+              } finally {
+                setTestingBackend(false);
+              }
+            }}
+            className="px-4 py-2 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] text-xs cursor-pointer disabled:opacity-50"
+          >
+            {testingBackend ? 'در حال بررسی…' : 'ذخیره و بررسی اتصال'}
+          </button>
+        </div>
+        {backendCheckMsg && (
+          <p className="text-xs text-[var(--accent)] font-medium">{backendCheckMsg}</p>
+        )}
+      </div>
 
       {/* مودال تایید پاک‌سازی */}
       {wipeConfirm && (

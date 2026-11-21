@@ -11,6 +11,7 @@ import {
   Sun,
   Users,
 } from 'lucide-react';
+import { AuthBridgeView } from './components/AuthBridgeView';
 import { AuthGate } from './components/AuthGate';
 import { DashboardView } from './components/DashboardView';
 import { HelpView } from './components/HelpView';
@@ -304,6 +305,15 @@ export default function App() {
     useCloud,
     firebaseUser,
   ]);
+
+  const isAuthBridgeMode = Boolean(
+    typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('authBridge')
+  );
+
+  if (isAuthBridgeMode) {
+    return <AuthBridgeView />;
+  }
 
   if (!currentUser) {
     return <AuthGate onLoginSuccess={handleLoginSuccess} onToast={showToast} />;

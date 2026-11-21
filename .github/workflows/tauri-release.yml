@@ -39,6 +39,8 @@ jobs:
         run: npm run lint
 
       - name: Build production web bundle
+        env:
+          VITE_BACKEND_URL: ${{ vars.VITE_BACKEND_URL || secrets.VITE_BACKEND_URL || '' }}
         run: npm run build
 
   deploy-firebase:
@@ -167,6 +169,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          VITE_BACKEND_URL: ${{ vars.VITE_BACKEND_URL || secrets.VITE_BACKEND_URL || '' }}
         with:
           tagName: ${{ needs.version.outputs.tag }}
           releaseName: 'روان‌سنج صنعتی ${{ needs.version.outputs.tag }}'
@@ -176,6 +179,8 @@ jobs:
 
       - name: Build Tauri v2 Windows bundle (fallback without GitHub Release upload)
         if: needs.version.outputs.pushed_tag != 'true'
+        env:
+          VITE_BACKEND_URL: ${{ vars.VITE_BACKEND_URL || secrets.VITE_BACKEND_URL || '' }}
         run: npm run tauri -- build
 
       - name: Upload Windows installer artifacts to workflow run
@@ -270,6 +275,7 @@ jobs:
       - name: Build Tauri v2 Android APK & AAB
         env:
           CI: true
+          VITE_BACKEND_URL: ${{ vars.VITE_BACKEND_URL || secrets.VITE_BACKEND_URL || '' }}
         run: npm run tauri -- android build --apk --aab --ci
 
       - name: Sign & package installable Android APK
