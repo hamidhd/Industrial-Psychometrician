@@ -172,6 +172,7 @@ jobs:
           releaseName: 'روان‌سنج صنعتی ${{ needs.version.outputs.tag }}'
           releaseDraft: false
           prerelease: false
+          tauriScript: npx tauri
 
       - name: Build Tauri v2 Windows bundle (fallback without GitHub Release upload)
         if: needs.version.outputs.pushed_tag != 'true'
