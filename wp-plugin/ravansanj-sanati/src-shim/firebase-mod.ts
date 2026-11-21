@@ -1,0 +1,13 @@
+export const onAuthStateChanged: any = (_auth: any, cb: any) => { cb(null); return () => {}; };
+export type User = any;
+export const collection: any = () => ({});
+export const deleteDoc: any = () => Promise.reject(new Error('cloud-unavailable'));
+export const doc: any = () => ({});
+export const onSnapshot: any = () => () => {};
+export const query: any = () => ({});
+export const serverTimestamp: any = () => Date.now();
+export const setDoc: any = () => Promise.reject(new Error('cloud-unavailable'));
+export const updateDoc: any = () => Promise.reject(new Error('cloud-unavailable'));
+export const where: any = () => ({});
+export const writeBatch: any = () => ({ set() {}, commit() { return Promise.reject(new Error('cloud-unavailable')); } });
+export type Unsubscribe = any;
