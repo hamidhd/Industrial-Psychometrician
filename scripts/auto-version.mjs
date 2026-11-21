@@ -20,6 +20,13 @@ function parseSemver(v) {
   return [Number(m[1]), Number(m[2]), Number(m[3])];
 }
 
+function compareSemver(a, b) {
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return a[i] - b[i];
+  }
+  return 0;
+}
+
 function formatSemver([maj, min, pat]) {
   return `${maj}.${min}.${pat}`;
 }
@@ -56,14 +63,16 @@ function main() {
       .filter(Boolean)[0] || '';
 
   const commitCount = Number(tryRun('git rev-list --count HEAD') || '1');
-  const baseVersion = latestTag
-    ? parseSemver(latestTag)
-    : pkg.version && pkg.version !== '0.0.0'
-    ? parseSemver(pkg.version)
-    : [1, 0, 0];
+  const pkgVersion =
+    pkg.version && pkg.version !== '0.0.0' ? parseSemver(pkg.version) : [1, 0, 0];
+  const tagVersion = latestTag ? parseSemver(latestTag) : null;
+  const manualOverride = Boolean(tagVersion && compareSemver(pkgVersion, tagVersion) > 0);
+  const baseVersion = tagVersion && !manualOverride ? tagVersion : pkgVersion;
 
-  let bumpType = 'initial';
-  let reason = 'انتشار اولیه نسخه دسکتاپ';
+  let bumpType = manualOverride ? 'manual' : 'initial';
+  let reason = manualOverride
+    ? `نسخه دستی ثبت‌شده در package.json (${formatSemver(pkgVersion)})`
+    : 'انتشار اولیه نسخه دسکتاپ';
   let filesChanged = 0;
   let addedFiles = 0;
   let linesChanged = 0;
@@ -72,7 +81,7 @@ function main() {
 
   const baseRef = latestTag || (commitCount > 1 ? 'HEAD~1' : '');
 
-  if (baseRef) {
+  if (baseRef && !manualOverride) {
     const numstat = tryRun(`git diff --numstat ${baseRef}..HEAD`);
     for (const line of numstat.split(/\r?\n/)) {
       if (!line.trim()) continue;
