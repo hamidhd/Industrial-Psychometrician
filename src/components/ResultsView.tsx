@@ -1,14 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { ALL_TESTS, faDigits, jdt, KIND_LABEL, testById } from '../data/tests';
-import { deleteTestResult } from '../services/firestoreService';
 import { localDeleteTestResult } from '../services/localStoreService';
+import { deleteServerResult, type ServerClientContext } from '../services/serverApiService';
 import type { Person, TestResult, Workspace } from '../types/psychometrics';
 import { DimensionRow, FlagBanner, ToneTag } from './DimensionDisplay';
 import { PlacementPanel } from './PlacementPanel';
 import { ReportModal } from './ReportModal';
 
 interface Props {
-  useCloud: boolean;
+  useServer: boolean;
+  serverCtx: ServerClientContext | null;
   canDelete?: boolean;
   workspace: Workspace;
   people: Person[];
@@ -16,11 +17,13 @@ interface Props {
   selectedPersonId: string | null;
   onSelectPerson: (id: string) => void;
   onRunNewTest: () => void;
+  onRefreshData: () => Promise<void>;
   onToast: (msg: string) => void;
 }
 
 export const ResultsView: React.FC<Props> = ({
-  useCloud,
+  useServer,
+  serverCtx,
   canDelete = true,
   workspace,
   people,
@@ -28,6 +31,7 @@ export const ResultsView: React.FC<Props> = ({
   selectedPersonId,
   onSelectPerson,
   onRunNewTest,
+  onRefreshData,
   onToast,
 }) => {
   const [showReport, setShowReport] = useState(false);
@@ -89,8 +93,9 @@ export const ResultsView: React.FC<Props> = ({
 
   const handleDeleteResult = async (resultId: string) => {
     try {
-      if (useCloud) {
-        await deleteTestResult(workspace.id, resultId);
+      if (useServer && serverCtx) {
+        await deleteServerResult(serverCtx, workspace.id, resultId);
+        await onRefreshData();
       } else {
         localDeleteTestResult(workspace.id, resultId);
       }

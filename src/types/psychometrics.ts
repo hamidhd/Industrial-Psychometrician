@@ -159,6 +159,36 @@ export interface TestResult {
   createdAt?: unknown;
 }
 
+export interface LegacyBackupPerson {
+  id?: string;
+  name: string;
+  code?: string;
+  kind?: string;
+  dept?: string;
+  job?: string;
+  age?: string | number;
+  created?: number;
+  results?: Array<{
+    id?: string;
+    testId: TestId;
+    date?: number;
+    data?: unknown;
+    answers?: number[];
+    taskMetrics?: Record<string, unknown>;
+    dims?: DimensionResult[];
+    flags?: ResultFlag[];
+  }>;
+}
+
+export interface ManagedAuthUser {
+  id: string;
+  username: string;
+  name: string;
+  role: 'admin' | 'evaluator';
+  dept: string;
+  createdAt: number;
+}
+
 export interface AppUser {
   id: string;
   personnelId: string;
@@ -169,9 +199,9 @@ export interface AppUser {
   hireDate: string;
   role: 'admin' | 'evaluator' | 'employee';
   username?: string;
-  passwordHash?: string;
-  mustChangePassword?: boolean;
   hasResultAccess: boolean;
+  isEnvAdmin?: boolean;
 }
 
 export type ViewName = 'home' | 'people' | 'run' | 'results' | 'help' | 'settings';
+

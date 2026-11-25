@@ -8,7 +8,7 @@ interface Props {
   people: Person[];
   results: TestResult[];
   computerLabel: string;
-  useCloud: boolean;
+  useServer: boolean;
   onNavigate: (view: ViewName) => void;
   onOpenCategory: (catId: OccupationalCategoryId) => void;
   onOpenPersonResults: (personId: string) => void;

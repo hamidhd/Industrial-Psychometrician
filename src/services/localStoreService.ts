@@ -1,5 +1,6 @@
 import type {
   DimensionResult,
+  LegacyBackupPerson,
   Person,
   PersonKind,
   ResultFlag,
@@ -7,7 +8,10 @@ import type {
   TestResult,
   Workspace,
 } from '../types/psychometrics';
-import { makeSafeId, type LegacyBackupPerson } from './firestoreService';
+
+export function makeSafeId(prefix: string): string {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+}
 
 const STORAGE_KEY = 'rsi_local_db_v2';
 const CHANNEL_NAME = 'rsi_local_sync';
@@ -376,11 +380,17 @@ export function localImportBackup(
         recordedByUid: userId,
         recordedByEmail: 'local@ravansanj.local',
         examiner: workspace.examiner,
-        answers: Array.isArray(rawR.data) ? rawR.data.map(Number) : undefined,
-        taskMetrics:
-          !Array.isArray(rawR.data) && rawR.data && typeof rawR.data === 'object'
-            ? (rawR.data as Record<string, unknown>)
+        answers: Array.isArray(rawR.answers)
+          ? rawR.answers.map(Number)
+          : Array.isArray(rawR.data)
+            ? rawR.data.map(Number)
             : undefined,
+        taskMetrics:
+          rawR.taskMetrics && typeof rawR.taskMetrics === 'object' && !Array.isArray(rawR.taskMetrics)
+            ? (rawR.taskMetrics as Record<string, unknown>)
+            : !Array.isArray(rawR.data) && rawR.data && typeof rawR.data === 'object'
+              ? (rawR.data as Record<string, unknown>)
+              : undefined,
         dims: rawR.dims,
         flags: Array.isArray(rawR.flags) ? rawR.flags : [],
       });

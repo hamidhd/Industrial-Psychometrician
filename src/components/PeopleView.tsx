@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import type { User } from 'firebase/auth';
 import { faDigits, KIND_LABEL } from '../data/tests';
 import {
   addCustomWorkUnit,
@@ -12,17 +11,18 @@ import {
   WORK_SETTING_LABEL,
 } from '../data/workUnits';
 import {
-  batchCreatePeople,
-  createPerson,
-  deletePersonAndResults,
-  updatePerson,
-} from '../services/firestoreService';
-import {
   localBatchCreatePeople,
   localCreatePerson,
   localDeletePersonAndResults,
   localUpdatePerson,
 } from '../services/localStoreService';
+import {
+  batchCreateServerPeople,
+  createServerPerson,
+  deleteServerPerson,
+  updateServerPerson,
+  type ServerClientContext,
+} from '../services/serverApiService';
 import type {
   OccupationalCategoryId,
   Person,
@@ -33,8 +33,8 @@ import type {
 } from '../types/psychometrics';
 
 interface Props {
-  useCloud: boolean;
-  firebaseUser: User | null;
+  useServer: boolean;
+  serverCtx: ServerClientContext | null;
   currentUserId: string;
   workspace: Workspace;
   people: Person[];
@@ -43,6 +43,7 @@ interface Props {
   onChangeCategoryFilter: (cat: '' | OccupationalCategoryId) => void;
   onStartTestFor: (personId: string) => void;
   onViewResultsFor: (personId: string) => void;
+  onRefreshData: () => Promise<void>;
   onToast: (msg: string) => void;
 }
 
@@ -71,8 +72,8 @@ function parseCsvLine(line: string, delimiter: string): string[] {
 }
 
 export const PeopleView: React.FC<Props> = ({
-  useCloud,
-  firebaseUser,
+  useServer,
+  serverCtx,
   currentUserId,
   workspace,
   people,
@@ -81,6 +82,7 @@ export const PeopleView: React.FC<Props> = ({
   onChangeCategoryFilter,
   onStartTestFor,
   onViewResultsFor,
+  onRefreshData,
   onToast,
 }) => {
   const [name, setName] = useState('');
@@ -163,8 +165,9 @@ export const PeopleView: React.FC<Props> = ({
         age: age.trim(),
         consent: true,
       };
-      if (useCloud && firebaseUser) {
-        await createPerson(workspace, firebaseUser, input);
+      if (useServer && serverCtx) {
+        await createServerPerson(serverCtx, workspace.id, input);
+        await onRefreshData();
       } else {
         localCreatePerson(workspace, currentUserId, input);
       }
@@ -174,9 +177,9 @@ export const PeopleView: React.FC<Props> = ({
       setJob('');
       setAge('');
       setConsent(false);
-      onToast(useCloud ? 'فرد در پایگاه داده ابری ذخیره شد' : 'فرد با موفقیت ذخیره شد');
-    } catch {
-      onToast('خطا در ذخیره‌ی فرد');
+      onToast(useServer ? 'فرد در سرور داخلی ذخیره شد' : 'فرد با موفقیت ذخیره شد');
+    } catch (err) {
+      onToast(err instanceof Error ? err.message : 'خطا در ذخیره‌ی فرد');
     } finally {
       setSaving(false);
     }
@@ -265,9 +268,9 @@ export const PeopleView: React.FC<Props> = ({
         }
 
         let added = 0;
-        if (useCloud && firebaseUser) {
-          const existingCodes = new Set(people.map((p) => p.code.trim()).filter(Boolean));
-          added = await batchCreatePeople(workspace, firebaseUser, items, existingCodes);
+        if (useServer && serverCtx) {
+          added = await batchCreateServerPeople(serverCtx, workspace.id, items);
+          if (added > 0) await onRefreshData();
         } else {
           added = localBatchCreatePeople(workspace, currentUserId, items);
         }
@@ -319,8 +322,9 @@ export const PeopleView: React.FC<Props> = ({
         job: editing.job,
         age: editing.age,
       };
-      if (useCloud && firebaseUser) {
-        await updatePerson(workspace.id, editing.id, input);
+      if (useServer && serverCtx) {
+        await updateServerPerson(serverCtx, workspace.id, editing.id, input);
+        await onRefreshData();
       } else {
         localUpdatePerson(workspace.id, editing.id, input);
       }
@@ -337,11 +341,9 @@ export const PeopleView: React.FC<Props> = ({
     if (!deleting) return;
     setBusyModal(true);
     try {
-      const personResultIds = results
-        .filter((r) => r.personId === deleting.id)
-        .map((r) => r.id);
-      if (useCloud && firebaseUser) {
-        await deletePersonAndResults(workspace.id, deleting.id, personResultIds);
+      if (useServer && serverCtx) {
+        await deleteServerPerson(serverCtx, workspace.id, deleting.id);
+        await onRefreshData();
       } else {
         localDeletePersonAndResults(workspace.id, deleting.id);
       }

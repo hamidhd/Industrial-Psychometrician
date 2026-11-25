@@ -1,5 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { onAuthStateChanged, type User } from 'firebase/auth';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BookOpen,
   ClipboardCheck,
@@ -11,8 +10,7 @@ import {
   Sun,
   Users,
 } from 'lucide-react';
-import { AuthBridgeView } from './components/AuthBridgeView';
-import { AuthGate } from './components/AuthGate';
+import { AuthGate, type AuthenticatedSession } from './components/AuthGate';
 import { DashboardView } from './components/DashboardView';
 import { HelpView } from './components/HelpView';
 import { PeopleView } from './components/PeopleView';
@@ -20,22 +18,19 @@ import { ResultsView } from './components/ResultsView';
 import { RunTestView } from './components/RunTestView';
 import { SettingsView } from './components/SettingsView';
 import { normalizeFa } from './data/workUnits';
-import { auth, signOutUser } from './firebase';
-import {
-  createPerson,
-  createWorkspace,
-  subscribePeople,
-  subscribeResults,
-  subscribeWorkspaces,
-} from './services/firestoreService';
 import {
   localCreatePerson,
   subscribeLocalPeople,
   subscribeLocalResults,
   subscribeLocalWorkspaces,
 } from './services/localStoreService';
+import {
+  createServerPerson,
+  fetchServerWorkspaceData,
+  fetchServerWorkspaces,
+  logoutServer,
+} from './services/serverApiService';
 import type {
-  AppUser,
   OccupationalCategoryId,
   Person,
   TestResult,
@@ -44,18 +39,18 @@ import type {
 } from './types/psychometrics';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<AppUser | null>(() => {
+  // Keep authenticated session strictly in JS memory (never persist privileged tokens in localStorage)
+  const [session, setSession] = useState<AuthenticatedSession | null>(() => {
     try {
-      const raw = localStorage.getItem('rsi_logged_session');
-      if (raw) return JSON.parse(raw);
+      // Clean up legacy insecure persisted session/credential keys if present from older versions
+      localStorage.removeItem('rsi_logged_session');
+      localStorage.removeItem('rsi_app_users');
+      localStorage.removeItem('rsi_app_users_v2');
     } catch {
       // ignore
     }
     return null;
   });
-
-  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
-  const [authReady, setAuthReady] = useState(false);
 
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [wsLoaded, setWsLoaded] = useState(false);
@@ -68,7 +63,7 @@ export default function App() {
   const [dataLoading, setDataLoading] = useState(false);
   const [peopleReady, setPeopleReady] = useState(false);
 
-  const [view, setView] = useState<ViewName>(() => (currentUser?.hasResultAccess ? 'home' : 'run'));
+  const [view, setView] = useState<ViewName>('run');
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<'' | OccupationalCategoryId>('');
 
@@ -85,10 +80,17 @@ export default function App() {
 
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const toastTimerRef = useRef<number | null>(null);
-  const creatingDefaultRef = useRef(false);
   const autoCreatingEmployeeRef = useRef<string | null>(null);
 
-  const useCloud = Boolean(firebaseUser && firebaseUser.email && firebaseUser.emailVerified);
+  const currentUser = session?.user ?? null;
+  const useServer = Boolean(session?.useServer);
+  const serverCtx = useMemo(
+    () =>
+      session?.useServer
+        ? { baseUrl: session.serverBaseUrl, token: session.token }
+        : null,
+    [session]
+  );
 
   const showToast = useCallback((msg: string) => {
     setToastMsg(msg);
@@ -97,38 +99,31 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (fbUser) => {
-      setFirebaseUser(fbUser);
-      setAuthReady(true);
-    });
-    return unsub;
-  }, []);
-
-  useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
     localStorage.setItem('rsi_theme', dark ? 'dark' : 'light');
   }, [dark]);
 
-  const handleLoginSuccess = (usr: AppUser) => {
-    setCurrentUser(usr);
-    localStorage.setItem('rsi_logged_session', JSON.stringify(usr));
-    creatingDefaultRef.current = false;
+  const handleLoginSuccess = (nextSession: AuthenticatedSession) => {
+    setSession(nextSession);
+    setWorkspaces([]);
+    setPeople([]);
+    setResults([]);
+    setSelectedPersonId(null);
     autoCreatingEmployeeRef.current = null;
-    if (!usr.hasResultAccess) {
-      setView('run');
-    } else {
-      setView('home');
-    }
+    setView(nextSession.user.hasResultAccess ? 'home' : 'run');
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    setSelectedPersonId(null);
-    localStorage.removeItem('rsi_logged_session');
-    if (firebaseUser) {
-      void signOutUser().catch(() => {});
+  const handleLogout = useCallback(() => {
+    if (serverCtx) {
+      void logoutServer(serverCtx);
     }
-  };
+    setSession(null);
+    setWorkspaces([]);
+    setPeople([]);
+    setResults([]);
+    setSelectedPersonId(null);
+    autoCreatingEmployeeRef.current = null;
+  }, [serverCtx]);
 
   const handleComputerLabelChange = (label: string) => {
     setComputerLabel(label);
@@ -141,38 +136,29 @@ export default function App() {
     setSelectedPersonId(null);
   };
 
-  // Subscribe to workspaces (Firestore when signed in with Google, Local Store otherwise)
+  // Load workspaces
+  const loadServerWorkspaces = useCallback(async () => {
+    if (!serverCtx) return;
+    try {
+      const list = await fetchServerWorkspaces(serverCtx);
+      setWorkspaces(list);
+      setWsLoaded(true);
+    } catch (err) {
+      setWsLoaded(true);
+      if (err instanceof Error && err.message.includes('منقضی')) {
+        handleLogout();
+        showToast('نشست کاربری شما منقضی شد؛ لطفاً دوباره وارد شوید.');
+      }
+    }
+  }, [serverCtx, handleLogout, showToast]);
+
   useEffect(() => {
-    if (!currentUser || !authReady) return;
+    if (!currentUser) return;
     setWsLoaded(false);
 
-    if (useCloud && firebaseUser?.email) {
-      const email = firebaseUser.email;
-      const unsub = subscribeWorkspaces(
-        email,
-        (list) => {
-          setWorkspaces(list);
-          setWsLoaded(true);
-          if (list.length === 0 && !creatingDefaultRef.current) {
-            creatingDefaultRef.current = true;
-            void createWorkspace(
-              firebaseUser,
-              'سازمان من — واحد ارزیابی و منابع انسانی',
-              currentUser.name
-            )
-              .then((id) => {
-                handleSelectWorkspace(id);
-              })
-              .catch(() => {
-                creatingDefaultRef.current = false;
-              });
-          }
-        },
-        () => {
-          setWsLoaded(true);
-        }
-      );
-      return unsub;
+    if (useServer && serverCtx) {
+      void loadServerWorkspaces();
+      return;
     }
 
     const unsubLocal = subscribeLocalWorkspaces((list) => {
@@ -180,12 +166,36 @@ export default function App() {
       setWsLoaded(true);
     });
     return unsubLocal;
-  }, [currentUser, authReady, useCloud, firebaseUser]);
+  }, [currentUser, useServer, serverCtx, loadServerWorkspaces]);
 
   const activeWorkspace =
     workspaces.find((w) => w.id === activeWsId) || workspaces[0] || null;
 
-  // Subscribe to people and results
+  // Load / refresh active workspace data
+  const refreshServerWorkspaceData = useCallback(async () => {
+    if (!serverCtx || !activeWorkspace) return;
+    try {
+      const data = await fetchServerWorkspaceData(serverCtx, activeWorkspace.id);
+      setPeople(data.people);
+      setResults(data.results);
+      setPeopleReady(true);
+      setDataLoading(false);
+    } catch (err) {
+      setPeopleReady(true);
+      setDataLoading(false);
+      if (err instanceof Error && (err.message.includes('منقضی') || err.message.includes('401'))) {
+        handleLogout();
+        showToast('نشست کاربری شما منقضی شد؛ لطفاً دوباره وارد شوید.');
+      }
+    }
+  }, [serverCtx, activeWorkspace, handleLogout, showToast]);
+
+  const refreshAll = useCallback(async () => {
+    if (!useServer) return;
+    await loadServerWorkspaces();
+    await refreshServerWorkspaceData();
+  }, [useServer, loadServerWorkspaces, refreshServerWorkspaceData]);
+
   useEffect(() => {
     if (!currentUser || !activeWorkspace) {
       setPeople([]);
@@ -195,49 +205,22 @@ export default function App() {
     }
     setDataLoading(true);
     setPeopleReady(false);
+
+    if (useServer && serverCtx) {
+      void refreshServerWorkspaceData();
+      const timer = window.setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          void refreshServerWorkspaceData();
+        }
+      }, 8000);
+      return () => window.clearInterval(timer);
+    }
+
     let pDone = false;
     let rDone = false;
     const checkDone = () => {
       if (pDone && rDone) setDataLoading(false);
     };
-
-    if (useCloud && firebaseUser?.email) {
-      const email = firebaseUser.email;
-      const unsubPeople = subscribePeople(
-        activeWorkspace.id,
-        email,
-        (list) => {
-          setPeople(list);
-          setPeopleReady(true);
-          pDone = true;
-          checkDone();
-        },
-        () => {
-          setPeopleReady(true);
-          pDone = true;
-          checkDone();
-        }
-      );
-
-      const unsubResults = subscribeResults(
-        activeWorkspace.id,
-        email,
-        (list) => {
-          setResults(list);
-          rDone = true;
-          checkDone();
-        },
-        () => {
-          rDone = true;
-          checkDone();
-        }
-      );
-
-      return () => {
-        unsubPeople();
-        unsubResults();
-      };
-    }
 
     const unsubLocalP = subscribeLocalPeople(activeWorkspace.id, (list) => {
       setPeople(list);
@@ -256,7 +239,7 @@ export default function App() {
       unsubLocalP();
       unsubLocalR();
     };
-  }, [activeWorkspace?.id, currentUser, useCloud, firebaseUser]);
+  }, [activeWorkspace?.id, currentUser, useServer, serverCtx, refreshServerWorkspaceData]);
 
   // Auto-register logged-in employee in workspace people list if not already present
   useEffect(() => {
@@ -265,8 +248,10 @@ export default function App() {
     const matched = people.find(
       (p) =>
         (currentUser.personnelId && p.code === currentUser.personnelId) ||
-        (currentUser.nationalCode && p.code === currentUser.nationalCode) ||
-        normalizeFa(p.name) === normalizeFa(currentUser.name)
+        (currentUser.nationalCode &&
+          currentUser.nationalCode !== '0000000000' &&
+          p.code === currentUser.nationalCode) ||
+        (currentUser.name !== 'پرسنل گرامی' && normalizeFa(p.name) === normalizeFa(currentUser.name))
     );
 
     if (matched) {
@@ -288,9 +273,10 @@ export default function App() {
       consent: true,
     };
 
-    if (useCloud && firebaseUser) {
-      void createPerson(activeWorkspace, firebaseUser, payload).then((id) => {
+    if (useServer && serverCtx) {
+      void createServerPerson(serverCtx, activeWorkspace.id, payload).then((id) => {
         setSelectedPersonId(id);
+        void refreshServerWorkspaceData();
       });
     } else {
       const id = localCreatePerson(activeWorkspace, currentUser.id, payload);
@@ -302,24 +288,16 @@ export default function App() {
     peopleReady,
     people,
     selectedPersonId,
-    useCloud,
-    firebaseUser,
+    useServer,
+    serverCtx,
+    refreshServerWorkspaceData,
   ]);
 
-  const isAuthBridgeMode = Boolean(
-    typeof window !== 'undefined' &&
-      new URLSearchParams(window.location.search).get('authBridge')
-  );
-
-  if (isAuthBridgeMode) {
-    return <AuthBridgeView />;
-  }
-
-  if (!currentUser) {
+  if (!session || !currentUser) {
     return <AuthGate onLoginSuccess={handleLoginSuccess} onToast={showToast} />;
   }
 
-  if (!authReady || !wsLoaded || !activeWorkspace) {
+  if (!wsLoaded || !activeWorkspace) {
     return (
       <div className="min-h-screen grid place-items-center bg-[var(--bg)] text-sm text-[var(--ink-muted)]">
         در حال آماده‌سازی پایگاه داده…
@@ -328,18 +306,31 @@ export default function App() {
   }
 
   const navigate = (nextView: ViewName) => {
+    if (!currentUser.hasResultAccess && (nextView === 'home' || nextView === 'people' || nextView === 'settings')) {
+      return;
+    }
     setView(nextView);
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   };
 
+  // Strict privacy isolation: employees ONLY see their own profile & own test results
   const ownPerson = !currentUser.hasResultAccess
     ? people.find(
         (p) =>
           (currentUser.personnelId && p.code === currentUser.personnelId) ||
-          (currentUser.nationalCode && p.code === currentUser.nationalCode) ||
-          normalizeFa(p.name) === normalizeFa(currentUser.name)
+          (currentUser.nationalCode &&
+            currentUser.nationalCode !== '0000000000' &&
+            p.code === currentUser.nationalCode) ||
+          p.createdByUid === currentUser.id
       ) || null
     : null;
+
+  const visiblePeople = currentUser.hasResultAccess ? people : ownPerson ? [ownPerson] : [];
+  const visibleResults = currentUser.hasResultAccess
+    ? results
+    : ownPerson
+    ? results.filter((r) => r.personId === ownPerson.id)
+    : [];
 
   const navItems = currentUser.hasResultAccess
     ? [
@@ -360,7 +351,7 @@ export default function App() {
     home: {
       title: 'داشبورد',
       subtitle: `سامانه روان‌سنجی استاندارد و جایابی شغلی · ${
-        useCloud ? 'پایگاه داده ابری' : 'حالت محلی'
+        useServer ? 'سرور داخلی سازمان' : 'حالت محلی'
       } (${computerLabel})`,
     },
     people: {
@@ -381,7 +372,7 @@ export default function App() {
     },
     settings: {
       title: 'تنظیمات و کاربران',
-      subtitle: 'مدیریت پایگاه داده، همگام‌سازی چندرایانه‌ای و پشتیبان‌گیری اطلاعات',
+      subtitle: 'مدیریت امنیت حساب‌های مدیریتی، پایگاه داده، سرور داخلی و پشتیبان‌گیری',
     },
   };
 
@@ -435,7 +426,7 @@ export default function App() {
             <div className="text-xs font-bold text-[var(--ink)] truncate">{currentUser.name}</div>
             <div className="text-[11px] text-[var(--ink-muted)] truncate">{roleSummary}</div>
             <div className="text-[11px] text-[var(--ink-muted)] truncate">
-              {computerLabel} / {useCloud ? 'ابری' : 'آفلاین'}
+              {computerLabel} / {useServer ? 'سرور داخلی' : 'آفلاین'}
             </div>
           </div>
         </aside>
@@ -551,7 +542,7 @@ export default function App() {
                       people={people}
                       results={results}
                       computerLabel={computerLabel}
-                      useCloud={useCloud}
+                      useServer={useServer}
                       onNavigate={navigate}
                       onOpenCategory={(catId) => {
                         setCategoryFilter(catId);
@@ -566,8 +557,8 @@ export default function App() {
 
                   {view === 'people' && currentUser.hasResultAccess && (
                     <PeopleView
-                      useCloud={useCloud}
-                      firebaseUser={firebaseUser}
+                      useServer={useServer}
+                      serverCtx={serverCtx}
                       currentUserId={currentUser.id}
                       workspace={activeWorkspace}
                       people={people}
@@ -582,24 +573,26 @@ export default function App() {
                         setSelectedPersonId(pid);
                         navigate('results');
                       }}
+                      onRefreshData={refreshServerWorkspaceData}
                       onToast={showToast}
                     />
                   )}
 
                   {view === 'run' && (
                     <RunTestView
-                      useCloud={useCloud}
-                      firebaseUser={firebaseUser}
+                      useServer={useServer}
+                      serverCtx={serverCtx}
                       currentUserId={currentUser.id}
                       canSelectAnyPerson={currentUser.hasResultAccess}
                       workspace={activeWorkspace}
                       computerLabel={computerLabel}
-                      people={currentUser.hasResultAccess ? people : ownPerson ? [ownPerson] : []}
+                      people={visiblePeople}
                       selectedPersonId={
                         currentUser.hasResultAccess ? selectedPersonId : ownPerson?.id || null
                       }
                       onSelectPerson={setSelectedPersonId}
                       onGoPeople={() => navigate('people')}
+                      onRefreshData={refreshServerWorkspaceData}
                       onFinishAll={(pid) => {
                         setSelectedPersonId(pid);
                         navigate('results');
@@ -610,16 +603,18 @@ export default function App() {
 
                   {view === 'results' && (
                     <ResultsView
-                      useCloud={useCloud}
+                      useServer={useServer}
+                      serverCtx={serverCtx}
                       canDelete={currentUser.hasResultAccess}
                       workspace={activeWorkspace}
-                      people={currentUser.hasResultAccess ? people : ownPerson ? [ownPerson] : []}
-                      results={results}
+                      people={visiblePeople}
+                      results={visibleResults}
                       selectedPersonId={
                         currentUser.hasResultAccess ? selectedPersonId : ownPerson?.id || null
                       }
                       onSelectPerson={setSelectedPersonId}
                       onRunNewTest={() => navigate('run')}
+                      onRefreshData={refreshServerWorkspaceData}
                       onToast={showToast}
                     />
                   )}
@@ -628,10 +623,9 @@ export default function App() {
 
                   {view === 'settings' && currentUser.hasResultAccess && (
                     <SettingsView
-                      useCloud={useCloud}
-                      firebaseUser={firebaseUser}
-                      currentUserId={currentUser.id}
-                      currentUserName={currentUser.name}
+                      useServer={useServer}
+                      serverCtx={serverCtx}
+                      currentUser={currentUser}
                       workspaces={workspaces}
                       activeWorkspace={activeWorkspace}
                       onSelectWorkspace={handleSelectWorkspace}
@@ -639,6 +633,7 @@ export default function App() {
                       onChangeComputerLabel={handleComputerLabelChange}
                       people={people}
                       results={results}
+                      onRefreshAll={refreshAll}
                       onToast={showToast}
                     />
                   )}
@@ -656,7 +651,7 @@ export default function App() {
           ابزارهای علمی (RIASEC, Mini-IPIP, DASS-21, OLBI, Epworth, PVT, Stroop)
         </span>
         <span className="mono">
-          {useCloud ? 'CLOUD-SYNC' : 'LOCAL-NODE'} · V{__APP_VERSION__}
+          {useServer ? 'SERVER-SYNC' : 'LOCAL-NODE'} · V{__APP_VERSION__}
         </span>
       </footer>
 

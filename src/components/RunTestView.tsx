@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import type { User } from 'firebase/auth';
 import {
   ALL_TESTS,
   BATTERIES,
@@ -9,15 +8,15 @@ import {
   testById,
 } from '../data/tests';
 import { getCategoryForDept } from '../data/workUnits';
-import { createTestResult } from '../services/firestoreService';
 import { localCreateTestResult } from '../services/localStoreService';
+import { createServerResult, type ServerClientContext } from '../services/serverApiService';
 import type { Person, TestId, Workspace } from '../types/psychometrics';
 import { PerformanceTaskRunner } from './PerformanceTasks';
 import { QuestionnaireRunner } from './QuestionnaireRunner';
 
 interface Props {
-  useCloud: boolean;
-  firebaseUser: User | null;
+  useServer: boolean;
+  serverCtx: ServerClientContext | null;
   currentUserId: string;
   canSelectAnyPerson: boolean;
   workspace: Workspace;
@@ -26,13 +25,14 @@ interface Props {
   selectedPersonId: string | null;
   onSelectPerson: (id: string) => void;
   onGoPeople: () => void;
+  onRefreshData: () => Promise<void>;
   onFinishAll: (personId: string) => void;
   onToast: (msg: string) => void;
 }
 
 export const RunTestView: React.FC<Props> = ({
-  useCloud,
-  firebaseUser,
+  useServer,
+  serverCtx,
   currentUserId,
   canSelectAnyPerson,
   workspace,
@@ -41,6 +41,7 @@ export const RunTestView: React.FC<Props> = ({
   selectedPersonId,
   onSelectPerson,
   onGoPeople,
+  onRefreshData,
   onFinishAll,
   onToast,
 }) => {
@@ -102,8 +103,9 @@ export const RunTestView: React.FC<Props> = ({
           dims: scored.dims,
           flags: scored.flags,
         };
-        if (useCloud && firebaseUser) {
-          await createTestResult(workspace, firebaseUser, computerLabel, payloadToSave);
+        if (useServer && serverCtx) {
+          await createServerResult(serverCtx, workspace.id, computerLabel, payloadToSave);
+          await onRefreshData();
         } else {
           localCreateTestResult(workspace, currentUserId, computerLabel, payloadToSave);
         }

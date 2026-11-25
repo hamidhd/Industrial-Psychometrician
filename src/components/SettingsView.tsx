@@ -1,14 +1,12 @@
-import React, { useMemo, useState } from 'react';
-import type { User } from 'firebase/auth';
+import React, { useEffect, useMemo, useState } from 'react';
+import { KeyRound, ShieldCheck, Trash2, UserPlus } from 'lucide-react';
 import { faDigits, jdate, KIND_LABEL, testById } from '../data/tests';
 import {
-  createWorkspace,
-  importBackupToWorkspace,
-  type LegacyBackupPerson,
-  updateWorkspaceAllowedEmails,
-  updateWorkspaceMeta,
-  wipeWorkspaceData,
-} from '../services/firestoreService';
+  changeLocalPassword,
+  createLocalUser,
+  deleteLocalUser,
+  listLocalUsers,
+} from '../services/localAuthService';
 import {
   localCreateWorkspace,
   localImportBackup,
@@ -16,17 +14,35 @@ import {
   localWipeWorkspace,
 } from '../services/localStoreService';
 import {
+  changeServerPassword,
+  createServerUser,
+  createServerWorkspace,
+  deleteServerUser,
+  importServerBackup,
+  listServerUsers,
+  updateServerWorkspaceMeta,
+  wipeServerWorkspace,
+  type ServerClientContext,
+} from '../services/serverApiService';
+import {
   checkBackendHealth,
   getConfiguredBackendUrl,
+  isTauriRuntime,
   setConfiguredBackendUrl,
 } from '../utils/tauriBridge';
-import type { Person, TestResult, Workspace } from '../types/psychometrics';
+import type {
+  AppUser,
+  LegacyBackupPerson,
+  ManagedAuthUser,
+  Person,
+  TestResult,
+  Workspace,
+} from '../types/psychometrics';
 
 interface Props {
-  useCloud: boolean;
-  firebaseUser: User | null;
-  currentUserId: string;
-  currentUserName: string;
+  useServer: boolean;
+  serverCtx: ServerClientContext | null;
+  currentUser: AppUser;
   workspaces: Workspace[];
   activeWorkspace: Workspace;
   onSelectWorkspace: (id: string) => void;
@@ -34,6 +50,7 @@ interface Props {
   onChangeComputerLabel: (label: string) => void;
   people: Person[];
   results: TestResult[];
+  onRefreshAll: () => Promise<void>;
   onToast: (msg: string) => void;
 }
 
@@ -49,10 +66,9 @@ function downloadFile(name: string, content: string, mime: string) {
 }
 
 export const SettingsView: React.FC<Props> = ({
-  useCloud,
-  firebaseUser,
-  currentUserId,
-  currentUserName,
+  useServer,
+  serverCtx,
+  currentUser,
   workspaces,
   activeWorkspace,
   onSelectWorkspace,
@@ -60,16 +76,31 @@ export const SettingsView: React.FC<Props> = ({
   onChangeComputerLabel,
   people,
   results,
+  onRefreshAll,
   onToast,
 }) => {
   const [org, setOrg] = useState(activeWorkspace.org);
   const [examiner, setExaminer] = useState(activeWorkspace.examiner);
   const [stationInput, setStationInput] = useState(computerLabel);
-  const [newEmail, setNewEmail] = useState('');
   const [newWsOrg, setNewWsOrg] = useState('');
   const [savingMeta, setSavingMeta] = useState(false);
-  const [savingEmails, setSavingEmails] = useState(false);
   const [creatingWs, setCreatingWs] = useState(false);
+
+  // Change own password
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPass, setChangingPass] = useState(false);
+
+  // Admin-only user management
+  const [managedUsers, setManagedUsers] = useState<ManagedAuthUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [newUserUsername, setNewUserUsername] = useState('');
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserDept, setNewUserDept] = useState('ایمنی و بهداشت');
+  const [newUserRole, setNewUserRole] = useState<'evaluator' | 'admin'>('evaluator');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [creatingUser, setCreatingUser] = useState(false);
 
   const [restoreDialog, setRestoreDialog] = useState<{
     org?: string;
@@ -78,11 +109,42 @@ export const SettingsView: React.FC<Props> = ({
   } | null>(null);
   const [wipeConfirm, setWipeConfirm] = useState(false);
   const [busyAction, setBusyAction] = useState(false);
+
+  const inTauri = isTauriRuntime();
   const [backendUrl, setBackendUrl] = useState(() => getConfiguredBackendUrl());
   const [testingBackend, setTestingBackend] = useState(false);
   const [backendCheckMsg, setBackendCheckMsg] = useState<string | null>(null);
 
-  const isOwner = Boolean(useCloud && firebaseUser && activeWorkspace.ownerId === firebaseUser.uid);
+  const isAdmin = currentUser.role === 'admin';
+
+  useEffect(() => {
+    setOrg(activeWorkspace.org);
+    setExaminer(activeWorkspace.examiner);
+  }, [activeWorkspace.id, activeWorkspace.org, activeWorkspace.examiner]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let active = true;
+    const loadUsers = async () => {
+      setLoadingUsers(true);
+      try {
+        if (useServer && serverCtx) {
+          const list = await listServerUsers(serverCtx);
+          if (active) setManagedUsers(list);
+        } else {
+          if (active) setManagedUsers(listLocalUsers());
+        }
+      } catch {
+        // ignore
+      } finally {
+        if (active) setLoadingUsers(false);
+      }
+    };
+    void loadUsers();
+    return () => {
+      active = false;
+    };
+  }, [isAdmin, useServer, serverCtx]);
 
   const legacyLocalData = useMemo(() => {
     try {
@@ -102,8 +164,9 @@ export const SettingsView: React.FC<Props> = ({
     e.preventDefault();
     setSavingMeta(true);
     try {
-      if (useCloud && firebaseUser) {
-        await updateWorkspaceMeta(activeWorkspace.id, org, examiner);
+      if (useServer && serverCtx) {
+        await updateServerWorkspaceMeta(serverCtx, activeWorkspace.id, org, examiner);
+        await onRefreshAll();
       } else {
         localUpdateWorkspaceMeta(activeWorkspace.id, org, examiner);
       }
@@ -116,58 +179,82 @@ export const SettingsView: React.FC<Props> = ({
     }
   };
 
-  const handleAddEmail = async (e: React.FormEvent) => {
+  const handleChangeOwnPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!useCloud || !firebaseUser) {
-      onToast('اشتراک‌گذاری ابری فقط در حالت ورود با حساب گوگل فعال است');
+    if (newPassword.length < 8) {
+      onToast('رمز عبور جدید باید حداقل ۸ کاراکتر باشد');
       return;
     }
-    const clean = newEmail.trim().toLowerCase();
-    if (!clean || !clean.includes('@')) {
-      onToast('ایمیل معتبر وارد کنید');
+    if (newPassword !== confirmPassword) {
+      onToast('تکرار رمز عبور جدید مطابقت ندارد');
       return;
     }
-    if (activeWorkspace.allowedEmails.includes(clean)) {
-      onToast('این ایمیل از قبل در فهرست است');
-      return;
-    }
-    if (activeWorkspace.allowedEmails.length >= 20) {
-      onToast('حداکثر ۲۰ ایمیل همکار در هر پایگاه داده مجاز است');
-      return;
-    }
-    setSavingEmails(true);
+    setChangingPass(true);
     try {
-      await updateWorkspaceAllowedEmails(
-        activeWorkspace,
-        [...activeWorkspace.allowedEmails, clean],
-        people.map((p) => p.id),
-        results.map((r) => r.id)
-      );
-      setNewEmail('');
-      onToast('دسترسی رایانه/همکار جدید اضافه و همگام شد');
-    } catch {
-      onToast('خطا در افزودن ایمیل همکار');
+      if (useServer && serverCtx) {
+        await changeServerPassword(serverCtx, currentPassword, newPassword);
+      } else {
+        await changeLocalPassword(currentUser.id, currentPassword, newPassword);
+      }
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      onToast('رمز عبور شما با موفقیت تغییر یافت');
+    } catch (err) {
+      onToast(err instanceof Error ? err.message : 'خطا در تغییر رمز عبور');
     } finally {
-      setSavingEmails(false);
+      setChangingPass(false);
     }
   };
 
-  const handleRemoveEmail = async (emailToRemove: string) => {
-    if (!useCloud || !firebaseUser) return;
-    if (emailToRemove === activeWorkspace.ownerEmail) return;
-    setSavingEmails(true);
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin) return;
+    if (!/^[a-zA-Z0-9_.-]{3,64}$/.test(newUserUsername.trim())) {
+      onToast('نام کاربری باید حداقل ۳ کاراکتر انگلیسی/عدد باشد');
+      return;
+    }
+    if (newUserPassword.length < 8) {
+      onToast('رمز عبور باید حداقل ۸ کاراکتر باشد');
+      return;
+    }
+    setCreatingUser(true);
     try {
-      await updateWorkspaceAllowedEmails(
-        activeWorkspace,
-        activeWorkspace.allowedEmails.filter((em) => em !== emailToRemove),
-        people.map((p) => p.id),
-        results.map((r) => r.id)
-      );
-      onToast('دسترسی ایمیل حذف شد');
-    } catch {
-      onToast('خطا در حذف دسترسی');
+      const payload = {
+        username: newUserUsername.trim(),
+        name: newUserName.trim(),
+        dept: newUserDept.trim() || 'ایمنی و بهداشت',
+        role: newUserRole,
+        password: newUserPassword,
+      };
+      const created =
+        useServer && serverCtx
+          ? await createServerUser(serverCtx, payload)
+          : await createLocalUser(payload);
+      setManagedUsers((prev) => [...prev, created]);
+      setNewUserUsername('');
+      setNewUserName('');
+      setNewUserPassword('');
+      onToast(`حساب ${created.name} ایجاد شد`);
+    } catch (err) {
+      onToast(err instanceof Error ? err.message : 'خطا در ایجاد حساب کاربری');
     } finally {
-      setSavingEmails(false);
+      setCreatingUser(false);
+    }
+  };
+
+  const handleDeleteUser = async (target: ManagedAuthUser) => {
+    if (!isAdmin) return;
+    try {
+      if (useServer && serverCtx) {
+        await deleteServerUser(serverCtx, target.id);
+      } else {
+        deleteLocalUser(currentUser.id, target.id);
+      }
+      setManagedUsers((prev) => prev.filter((u) => u.id !== target.id));
+      onToast(`حساب ${target.name} حذف شد`);
+    } catch (err) {
+      onToast(err instanceof Error ? err.message : 'خطا در حذف حساب کاربری');
     }
   };
 
@@ -177,9 +264,10 @@ export const SettingsView: React.FC<Props> = ({
     setCreatingWs(true);
     try {
       const id =
-        useCloud && firebaseUser
-          ? await createWorkspace(firebaseUser, newWsOrg.trim(), examiner)
-          : localCreateWorkspace(newWsOrg.trim(), examiner, currentUserName);
+        useServer && serverCtx
+          ? await createServerWorkspace(serverCtx, newWsOrg.trim(), examiner)
+          : localCreateWorkspace(newWsOrg.trim(), examiner, currentUser.name);
+      if (useServer) await onRefreshAll();
       onSelectWorkspace(id);
       setNewWsOrg('');
       onToast('پایگاه داده جدید ایجاد شد');
@@ -265,23 +353,22 @@ export const SettingsView: React.FC<Props> = ({
     setBusyAction(true);
     try {
       const stats =
-        useCloud && firebaseUser
-          ? await importBackupToWorkspace(
-              activeWorkspace,
-              firebaseUser,
-              stationInput.trim() || 'رایانه مشترک',
+        useServer && serverCtx
+          ? await importServerBackup(
+              serverCtx,
+              activeWorkspace.id,
+              stationInput.trim() || 'سرور داخلی',
               restoreDialog,
-              mode,
-              people,
-              results
+              mode
             )
           : localImportBackup(
               activeWorkspace,
-              currentUserId,
+              currentUser.id,
               stationInput.trim() || 'ایستگاه محلی',
               restoreDialog,
               mode
             );
+      if (useServer) await onRefreshAll();
       setRestoreDialog(null);
       onToast(
         `${faDigits(stats.importedPeople)} فرد و ${faDigits(stats.importedResults)} نتیجه وارد شد`
@@ -296,12 +383,9 @@ export const SettingsView: React.FC<Props> = ({
   const executeWipe = async () => {
     setBusyAction(true);
     try {
-      if (useCloud && firebaseUser) {
-        await wipeWorkspaceData(
-          activeWorkspace.id,
-          people.map((p) => p.id),
-          results.map((r) => r.id)
-        );
+      if (useServer && serverCtx) {
+        await wipeServerWorkspace(serverCtx, activeWorkspace.id);
+        await onRefreshAll();
       } else {
         localWipeWorkspace(activeWorkspace.id);
       }
@@ -370,82 +454,172 @@ export const SettingsView: React.FC<Props> = ({
         </button>
       </form>
 
-      {/* اشتراک‌گذاری بین چند رایانه */}
+      {/* تغییر رمز عبور حساب فعلی */}
       <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6 space-y-4">
-        <div>
-          <h2 className="text-lg font-extrabold">اتصال چند رایانه و همگام‌سازی ابری</h2>
-          {useCloud ? (
-            <p className="text-xs text-[var(--ink-muted)] mt-1 leading-6">
-              حساب گوگل شما متصل است. روی تمام رایانه‌ها با همین حساب گوگل (
-              <span className="num-ltr font-semibold text-[var(--ink)]">
-                {activeWorkspace.ownerEmail}
-              </span>
-              ) وارد شوید یا ایمیل همکاران را در زیر اضافه کنید تا هم‌زمان به همین پایگاه داده
-              دسترسی داشته باشند.
-            </p>
+        <div className="flex items-center gap-2">
+          <KeyRound className="w-5 h-5 text-[var(--accent)]" />
+          <h2 className="text-lg font-extrabold">امنیت و تغییر رمز عبور حساب فعلی</h2>
+        </div>
+
+        {currentUser.isEnvAdmin ? (
+          <p className="text-xs leading-6 text-[var(--ink-muted)]">
+            شما با حساب مدیر تعریف‌شده در تنظیمات محیطی سرور (<code className="num-ltr">ADMIN_PASSCODE</code>)
+            وارد شده‌اید. برای تغییر این رمز، مقدار متغیر محیطی را در سرور سازمان به‌روزرسانی کنید.
+          </p>
+        ) : (
+          <form onSubmit={handleChangeOwnPassword} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-medium mb-1">رمز عبور فعلی</label>
+              <input
+                type="password"
+                required
+                dir="ltr"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm num-ltr"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1">رمز جدید (حداقل ۸ کاراکتر)</label>
+              <input
+                type="password"
+                required
+                dir="ltr"
+                minLength={8}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm num-ltr"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1">تکرار رمز جدید</label>
+              <input
+                type="password"
+                required
+                dir="ltr"
+                minLength={8}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm num-ltr"
+              />
+            </div>
+            <div className="sm:col-span-3">
+              <button
+                type="submit"
+                disabled={changingPass}
+                className="px-5 py-2 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] text-sm cursor-pointer disabled:opacity-50"
+              >
+                {changingPass ? 'در حال ذخیره…' : 'به‌روزرسانی رمز عبور'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+
+      {/* مدیریت حساب‌های مدیران و ارزیابان (فقط مدیر ارشد) */}
+      {isAdmin && (
+        <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-[var(--accent)]" />
+            <div>
+              <h2 className="text-lg font-extrabold">مدیریت حساب‌های مدیران و ارزیابان</h2>
+              <p className="text-xs text-[var(--ink-muted)]">
+                فقط مدیر ارشد می‌تواند حساب‌های جدید ارزیاب (طب کار / منابع انسانی) با رمز عبور
+                مجزا تعریف یا دسترسی آن‌ها را لغو کند.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleCreateUser} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+            <input
+              required
+              dir="ltr"
+              placeholder="نام کاربری (انگلیسی)"
+              value={newUserUsername}
+              onChange={(e) => setNewUserUsername(e.target.value)}
+              className="px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-xs num-ltr"
+            />
+            <input
+              required
+              maxLength={120}
+              placeholder="نام و نام خانوادگی"
+              value={newUserName}
+              onChange={(e) => setNewUserName(e.target.value)}
+              className="px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-xs"
+            />
+            <input
+              maxLength={100}
+              placeholder="واحد (مثلاً: طب کار)"
+              value={newUserDept}
+              onChange={(e) => setNewUserDept(e.target.value)}
+              className="px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-xs"
+            />
+            <select
+              aria-label="نقش کاربری"
+              value={newUserRole}
+              onChange={(e) => setNewUserRole(e.target.value as 'evaluator' | 'admin')}
+              className="px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-xs"
+            >
+              <option value="evaluator">ارزیاب / طب کار</option>
+              <option value="admin">مدیر ارشد</option>
+            </select>
+            <input
+              type="password"
+              required
+              dir="ltr"
+              minLength={8}
+              placeholder="رمز عبور (حداقل ۸ کاراکتر)"
+              value={newUserPassword}
+              onChange={(e) => setNewUserPassword(e.target.value)}
+              className="px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-xs num-ltr"
+            />
+            <div className="sm:col-span-2 lg:col-span-5">
+              <button
+                type="submit"
+                disabled={creatingUser}
+                className="px-4 py-2 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] text-xs cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>{creatingUser ? 'در حال ثبت…' : '+ ایجاد حساب ارزیاب / مدیر جدید'}</span>
+              </button>
+            </div>
+          </form>
+
+          {loadingUsers ? (
+            <p className="text-xs text-[var(--ink-muted)]">در حال بارگذاری فهرست حساب‌ها…</p>
+          ) : managedUsers.length > 0 ? (
+            <ul className="divide-y divide-[var(--ink-faint)] border border-[var(--ink-faint)] rounded-xl bg-[var(--bg)]">
+              {managedUsers.map((u) => (
+                <li key={u.id} className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 text-xs">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-bold text-sm">{u.name}</span>
+                    <span className="num-ltr px-2 py-0.5 rounded bg-[var(--surface)] border border-[var(--ink-faint)]">
+                      {u.username}
+                    </span>
+                    <span className="text-[var(--ink-muted)]">
+                      {u.role === 'admin' ? 'مدیر ارشد' : 'ارزیاب / طب کار'} · {u.dept}
+                    </span>
+                  </div>
+                  {u.id !== currentUser.id && (
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteUser(u)}
+                      className="px-2.5 py-1 rounded-lg border border-[#dc2626]/40 text-[#dc2626] dark:text-[#f87171] hover:bg-[#dc2626]/10 cursor-pointer inline-flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>حذف</span>
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
           ) : (
-            <p className="text-xs text-[var(--ink-muted)] mt-1 leading-6">
-              شما در حال حاضر با نام کاربری محلی یا کد پرسنلی وارد شده‌اید؛ داده‌ها روی همین دستگاه
-              ذخیره می‌شوند. برای انتقال اطلاعات بین چند رایانه بدون اینترنت/گوگل، از بخش «پشتیبان‌گیری
-              و خروجی JSON» در پایین صفحه استفاده کنید.
+            <p className="text-xs text-[var(--ink-muted)]">
+              حساب ذخیره‌شده‌ای در فهرست یافت نشد.
             </p>
           )}
         </div>
-
-        {useCloud && (
-          <>
-            <div className="border-t border-[var(--ink-faint)] pt-3">
-              <div className="text-xs font-bold mb-2">حساب‌های مجاز به این پایگاه داده:</div>
-              <ul className="divide-y divide-[var(--ink-faint)] border border-[var(--ink-faint)] rounded-xl bg-[var(--bg)]">
-                {activeWorkspace.allowedEmails.map((em) => (
-                  <li key={em} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="num-ltr truncate">{em}</span>
-                      <span className="text-xs text-[var(--ink-muted)]">
-                        {em === activeWorkspace.ownerEmail ? '· مالک' : '· همکار مجاز'}
-                      </span>
-                    </div>
-                    {isOwner && em !== activeWorkspace.ownerEmail && (
-                      <button
-                        type="button"
-                        disabled={savingEmails}
-                        onClick={() => handleRemoveEmail(em)}
-                        className="px-2.5 py-1 text-xs rounded-lg border border-[#dc2626]/40 text-[#dc2626] dark:text-[#f87171] dark:border-[#f87171]/40 cursor-pointer whitespace-nowrap"
-                      >
-                        لغو دسترسی
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {isOwner ? (
-              <form onSubmit={handleAddEmail} className="flex flex-wrap gap-2">
-                <input
-                  type="email"
-                  dir="ltr"
-                  placeholder="colleague@gmail.com"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  className="flex-1 min-w-[220px] px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-sm num-ltr"
-                />
-                <button
-                  type="submit"
-                  disabled={savingEmails}
-                  className="px-4 py-2 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] shadow-[0_4px_12px_var(--accent-soft)] hover:opacity-90 disabled:opacity-50 cursor-pointer text-sm whitespace-nowrap"
-                >
-                  {savingEmails ? 'در حال همگام‌سازی…' : '+ افزودن رایانه / همکار'}
-                </button>
-              </form>
-            ) : (
-              <p className="text-xs text-[var(--ink-muted)]">
-                فقط مالک پایگاه داده می‌تواند ایمیل همکاران جدید را اضافه یا حذف کند.
-              </p>
-            )}
-          </>
-        )}
-      </div>
+      )}
 
       {/* تغییر یا ایجاد پایگاه داده */}
       <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6 space-y-3">
@@ -462,7 +636,7 @@ export const SettingsView: React.FC<Props> = ({
                   : 'bg-[var(--ink-faint)] border-[var(--ink-faint)] hover:border-[var(--accent)]/40'
               }`}
             >
-              {ws.org || 'پایگاه داده بدون نام'} ({faDigits(ws.allowedEmails.length)} کاربر)
+              {ws.org || 'پایگاه داده بدون نام'}
             </button>
           ))}
         </div>
@@ -490,15 +664,14 @@ export const SettingsView: React.FC<Props> = ({
           <b className="text-[var(--accent)]">داده‌های قدیمی روی این رایانه یافت شد</b>
           <p className="text-xs">
             در حافظه‌ی محلی این مرورگر ({faDigits(legacyLocalData.people.length)} پرونده) از نسخه‌ی
-            تک‌رایانه‌ی قبلی وجود دارد. می‌توانید آن‌ها را به پایگاه داده مشترک ابری منتقل کنید تا
-            روی همه‌ی رایانه‌ها دیده شوند.
+            قبلی وجود دارد. می‌توانید آن‌ها را به پایگاه داده فعلی منتقل کنید.
           </p>
           <button
             type="button"
             onClick={() => setRestoreDialog(legacyLocalData)}
             className="px-3.5 py-1.5 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] text-xs cursor-pointer"
           >
-            انتقال داده‌های محلی به پایگاه داده مشترک
+            انتقال داده‌های محلی به پایگاه داده فعلی
           </button>
         </div>
       )}
@@ -507,7 +680,7 @@ export const SettingsView: React.FC<Props> = ({
       <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6 space-y-3">
         <h2 className="text-lg font-extrabold">پشتیبان‌گیری و خروجی</h2>
         <p className="text-xs text-[var(--ink-muted)]">
-          گرفتن پشتیبان دوره‌ای و نگهداری فایل در محل امن توصیه می‌شود (فایل شامل اطلاعات حساس
+          گرفتن پشتیبان دوره‌ای و نگهداری فایل در محل امن توصیه می‌شود (فایل شامل اطلاعات محرمانه
           کارکنان است).
         </p>
         <div className="flex flex-wrap gap-2">
@@ -541,7 +714,7 @@ export const SettingsView: React.FC<Props> = ({
       <div className="rounded-2xl border border-[var(--ink-faint)] bg-[var(--surface)] p-5 sm:p-6 space-y-3">
         <h2 className="text-lg font-extrabold">پاک‌سازی</h2>
         <p className="text-xs text-[var(--ink-muted)]">
-          حذف همه‌ی افراد و نتایج این پایگاه داده مشترک. قابل بازگشت نیست مگر پشتیبان داشته باشید.
+          حذف همه‌ی افراد و نتایج این پایگاه داده. قابل بازگشت نیست مگر پشتیبان داشته باشید.
         </p>
         <button
           type="button"
@@ -552,11 +725,67 @@ export const SettingsView: React.FC<Props> = ({
         </button>
       </div>
 
+      {/* تنظیم سرور داخلی سازمان (برای ویندوز و اندروید) */}
+      <div className="bg-[var(--surface)] border border-[var(--ink-faint)] rounded-2xl p-6 space-y-3">
+        <h2 className="text-base font-extrabold">اتصال به سرور داخلی سازمان</h2>
+        <p className="text-xs leading-6 text-[var(--ink-muted)]">
+          {inTauri
+            ? 'برای همگام‌سازی خودکار پرونده‌ها و نتایج بین ویندوز، اندروید و مرورگرهای شبکه داخلی سازمان، آدرس سرور داخلی (node server.ts) را وارد کنید.'
+            : 'این نسخه مستقیماً به سرور داخلی سازمان متصل است. برای استفاده در نرم‌افزار نصبی ویندوز یا اندروید نیز می‌توانید آدرس این سرور را در دستگاه‌ها تنظیم کنید.'}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <input
+            type="url"
+            dir="ltr"
+            placeholder="http://192.168.1.10:3000"
+            value={backendUrl}
+            onChange={(e) => {
+              setBackendUrl(e.target.value);
+              setBackendCheckMsg(null);
+            }}
+            className="flex-1 min-w-[220px] px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-xs num-ltr"
+          />
+          <button
+            type="button"
+            disabled={testingBackend}
+            onClick={async () => {
+              const saved = setConfiguredBackendUrl(backendUrl);
+              setBackendUrl(saved);
+              if (!saved) {
+                setBackendCheckMsg('آدرس سرور پاک شد.');
+                onToast('آدرس سرور داخلی پاک شد');
+                return;
+              }
+              setTestingBackend(true);
+              try {
+                const res = await checkBackendHealth(saved);
+                if (res.ok) {
+                  const msg = `اتصال موفق (نسخه ${res.version || 'سرور داخلی'})`;
+                  setBackendCheckMsg(msg);
+                  onToast('آدرس سرور داخلی ذخیره و ارتباط تایید شد');
+                } else {
+                  setBackendCheckMsg(res.error || 'خطا در اتصال به سرور');
+                  onToast('آدرس ذخیره شد اما سرور پاسخ نداد');
+                }
+              } finally {
+                setTestingBackend(false);
+              }
+            }}
+            className="px-4 py-2 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] text-xs cursor-pointer disabled:opacity-50"
+          >
+            {testingBackend ? 'در حال بررسی…' : 'ذخیره و بررسی اتصال'}
+          </button>
+        </div>
+        {backendCheckMsg && (
+          <p className="text-xs text-[var(--accent)] font-medium">{backendCheckMsg}</p>
+        )}
+      </div>
+
       {/* مودال بازیابی پشتیبان */}
       {restoreDialog && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
           <div className="bg-[var(--surface)] border border-[var(--ink-faint)] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <h2 className="text-lg font-extrabold">بازیابی پشتیبان در پایگاه داده مشترک</h2>
+            <h2 className="text-lg font-extrabold">بازیابی پشتیبان در پایگاه داده</h2>
             <p className="text-sm text-[var(--ink-muted)]">
               {faDigits(restoreDialog.people.length)} فرد در فایل است. داده‌های فعلی جایگزین شود یا
               با آنها ادغام شود؟
@@ -591,70 +820,13 @@ export const SettingsView: React.FC<Props> = ({
         </div>
       )}
 
-      {/* تنظیم سرور بک‌اند برای ویندوز و اندروید */}
-      <div className="bg-[var(--surface)] border border-[var(--ink-faint)] rounded-2xl p-6 space-y-3">
-        <h2 className="text-base font-extrabold">سرور بک‌اند احراز هویت گوگل (ویندوز و اندروید)</h2>
-        <p className="text-xs leading-6 text-[var(--ink-muted)]">
-          در نسخه‌های نصبی ویندوز و اندروید، ارتباط امن مرورگر سیستم با حساب گوگل از طریق این سرور
-          بک‌اند انجام می‌شود. در ویندوز بدون وارد کردن سرور نیز ورود از طریق مرورگر محلی فعال است،
-          اما در اندروید وارد کردن آدرس HTTPS بک‌اند ضروری است.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <input
-            type="url"
-            dir="ltr"
-            placeholder="https://your-backend.example.com"
-            value={backendUrl}
-            onChange={(e) => {
-              setBackendUrl(e.target.value);
-              setBackendCheckMsg(null);
-            }}
-            className="flex-1 min-w-[220px] px-3 py-2 rounded-lg border border-[var(--ink-faint)] focus:border-[var(--accent)] outline-none bg-[var(--bg)] text-xs num-ltr"
-          />
-          <button
-            type="button"
-            disabled={testingBackend}
-            onClick={async () => {
-              const saved = setConfiguredBackendUrl(backendUrl);
-              setBackendUrl(saved);
-              if (!saved) {
-                setBackendCheckMsg('آدرس سرور پاک شد.');
-                onToast('آدرس سرور بک‌اند پاک شد');
-                return;
-              }
-              setTestingBackend(true);
-              try {
-                const res = await checkBackendHealth(saved);
-                if (res.ok) {
-                  const msg = `اتصال موفق (نسخه ${res.version || 'بک‌اند'})`;
-                  setBackendCheckMsg(msg);
-                  onToast('آدرس بک‌اند ذخیره و ارتباط تایید شد');
-                } else {
-                  setBackendCheckMsg(res.error || 'خطا در اتصال به سرور');
-                  onToast('آدرس ذخیره شد اما سرور پاسخ نداد');
-                }
-              } finally {
-                setTestingBackend(false);
-              }
-            }}
-            className="px-4 py-2 rounded-lg font-bold bg-[var(--accent)] text-[var(--accent-fg)] text-xs cursor-pointer disabled:opacity-50"
-          >
-            {testingBackend ? 'در حال بررسی…' : 'ذخیره و بررسی اتصال'}
-          </button>
-        </div>
-        {backendCheckMsg && (
-          <p className="text-xs text-[var(--accent)] font-medium">{backendCheckMsg}</p>
-        )}
-      </div>
-
       {/* مودال تایید پاک‌سازی */}
       {wipeConfirm && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
           <div className="bg-[var(--surface)] border border-[var(--ink-faint)] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <h2 className="text-lg font-extrabold">حذف همه‌ی داده‌ها؟</h2>
             <p className="text-sm text-[var(--ink-muted)]">
-              این کار تمام پرونده‌ها و نتایج را برای همه‌ی رایانه‌های متصل به این پایگاه داده حذف
-              می‌کند و برگشت‌پذیر نیست.
+              این کار تمام پرونده‌ها و نتایج این پایگاه داده را حذف می‌کند و برگشت‌پذیر نیست.
             </p>
             <div className="flex flex-wrap gap-2">
               <button
